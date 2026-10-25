@@ -3,6 +3,7 @@ import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_assets.dart';
 import '../../core/utils/app_text_style.dart';
 import '../../models/onboarding_model.dart';
+import '../../presentation/Pages/home_page.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({Key? key}) : super(key: key);
@@ -43,12 +44,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
         curve: Curves.easeInOutCubic,
       );
     } else {
-      // Navigator.of(context).pushReplacementNamed('/home');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (BuildContext context) => HomePage()),
+    );
     }
   }
 
   void _onSkipPressed() {
-    // Navigator.of(context).pushReplacementNamed('/home');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (BuildContext context) => HomePage()),
+    );
   }
 
   @override
@@ -106,7 +113,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(28),
                                 child: Image.asset(
-                                  item.image, 
+                                  item.image,
                                   height: size.height * 0.42,
                                   width: double.infinity,
                                   fit: BoxFit.cover,

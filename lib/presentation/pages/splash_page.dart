@@ -117,14 +117,14 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                             ),
                           ),
                           Positioned(
-                            top: -10 ,
+                            top: 11 ,
                             child: ScaleTransition(
                               scale: _sproutScaleAnimation,
                               alignment: Alignment.bottomCenter, 
                               child: Image.asset(
                                 'assets/sprout.png', 
                                 width: 55,
-                                height: 55,
+                                height: 50,
                                 fit: BoxFit.contain,
                               ),
                             ),
