@@ -53,7 +53,7 @@ class _HomeViewState extends State<_HomeView> {
               const SizedBox(height: 20),
               Container(height: 52, padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(30),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(.02), blurRadius: 10,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(.02), blurRadius: 10,
                     offset: const Offset(0, 2))]),
                 child: Row(children: const [
                   Icon(Icons.search, color: AppColors.textDark, size: 22), SizedBox(width: 10),
@@ -171,7 +171,7 @@ class _HomeViewState extends State<_HomeView> {
 
   Widget _offlineNotice(HomeState state, HomeCubit cubit) => Container(
     width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(color: AppColors.warning.withOpacity(.12),
+    decoration: BoxDecoration(color: AppColors.warning.withValues(.12),
       borderRadius: BorderRadius.circular(14)),
     child: Row(children: [
       const Icon(Icons.wifi_off, size: 18, color: AppColors.textMuted),

@@ -44,7 +44,7 @@ class BottomNavBar extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: isCenter ? 14 : 8, vertical: 6),
         decoration: isCenter && isSelected
             ? BoxDecoration(
-                color: AppColors.primaryGreen.withOpacity(0.15), 
+                color: AppColors.primaryGreen.withValues(0.15), 
                 borderRadius: BorderRadius.circular(20),
               )
             : null,

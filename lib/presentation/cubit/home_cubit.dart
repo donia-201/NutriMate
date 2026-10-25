@@ -60,7 +60,7 @@ class HomeCubit extends Cubit<HomeState> {
       final meal = await _api.getRandomMeal();
       final categories = await _api.getCategories();
       final popular = await _api.getPopularMeals();
-      final fetched = <MealModel>[if (meal != null) meal, ...popular];
+      final fetched = <MealModel>[? meal, ...popular];
       await _database.cacheMeals(fetched);
       emit(state.copyWith(
         isLoading: false,
