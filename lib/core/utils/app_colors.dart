@@ -18,6 +18,6 @@ import 'package:flutter/material.dart';
   static const Color success = Color(0xFF52B788);
   static const Color warning = Color(0xFFFFA500);
   
-  static Color primaryGreenwithValues(alpha : double opacity) =>
+  static Color primaryGreenwithValues({required double opacity}) =>
       primaryGreen.withValues( alpha : opacity);
  }

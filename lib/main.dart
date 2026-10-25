@@ -7,7 +7,7 @@ void main() {
 }
 
 class NutriMateApp extends StatelessWidget {
-  const NutriMateApp({Key? key}): super(key:  key);
+  const NutriMateApp({super.key});
 
   // This widget is the root of your application.
   @override

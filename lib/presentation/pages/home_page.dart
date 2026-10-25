@@ -8,7 +8,7 @@ import '../widgets/bottom_nav.dart';
 
 class HomePage extends StatelessWidget {
   final String userName;
-  const HomePage({Key? key, this.userName = 'user'}) : super(key: key);
+  const HomePage({super.key, this.userName = 'user'});
 
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -138,12 +138,12 @@ class _HomeViewState extends State<_HomeView> {
                   Row(children: [
                     Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(12),
                       child: Image.network('https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
-                        height: 90, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageFallback(height: 90)))),
+                        height: 90, fit: BoxFit.cover, errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 90)))),
                     const Padding(padding: EdgeInsets.symmetric(horizontal: 10),
                       child: Icon(Icons.arrow_forward, color: AppColors.textDark, size: 20)),
                     Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(12),
                       child: Image.network('https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400',
-                        height: 90, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageFallback(height: 90)))),
+                        height: 90, fit: BoxFit.cover, errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 90)))),
                   ]),
                   const SizedBox(height: 12),
                   const Text('Chocolate Cake → Greek Yogurt Berry Bowl',
@@ -189,7 +189,7 @@ class _HomeViewState extends State<_HomeView> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Image.network(meal.strMealThumb, height: 180, width: double.infinity, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _imageFallback(height: 180))),
+            errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 180))),
         Padding(padding: const EdgeInsets.all(16), child: Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(meal.strMeal, maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -246,7 +246,7 @@ class _HomeViewState extends State<_HomeView> {
     child: Row(children: [
       ClipRRect(borderRadius: BorderRadius.circular(14),
         child: Image.network(meal.strMealThumb, width: 65, height: 65, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _imageFallback(width: 65, height: 65))),
+          errorBuilder: (_ , _ ,  _ ) => _imageFallback(width: 65, height: 65))),
       const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(meal.strMeal, maxLines: 2, overflow: TextOverflow.ellipsis,
