@@ -3,10 +3,10 @@ import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_assets.dart';
 import '../../core/utils/app_text_style.dart';
 import '../../models/onboarding_model.dart';
-import '../../presentation/Pages/home_page.dart';
+import '../../presentation/pages/home_page.dart';
 
 class OnboardingPage extends StatefulWidget {
-  const OnboardingPage({Key? key}) : super(key: key);
+  const OnboardingPage({super.key}) ;
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
@@ -190,7 +190,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    overlayColor: Colors.black.withOpacity(0.1),
+                    overlayColor: Colors.black.withValues(alpha : 0.1),
                   ),
                   child: Text(
                     _currentIndex == _items.length - 1 ? 'Get Started' : 'Next',

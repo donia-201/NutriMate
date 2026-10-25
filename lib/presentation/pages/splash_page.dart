@@ -5,7 +5,7 @@ import '../../core/utils/app_text_style.dart';
 import 'onboarding_page.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({Key? key}) : super(key: key);
+  const SplashPage({super.key}) ;
 
   @override
   State<SplashPage> createState() => _SplashPageState();
@@ -98,7 +98,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.08),
+                      color: AppColors.primaryGreen.withValues(alpha : 0.08),
                       borderRadius: BorderRadius.circular(40),
                     ),
                     child: SizedBox(
