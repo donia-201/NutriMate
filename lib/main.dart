@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:nutrimate/firebase_options.dart';
-import 'screens/AuthGate.dart';
+import 'package:nutrimate/screens/auth_gate.dart';
 import 'core/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
