@@ -102,8 +102,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       if (_pageController.position.haveDimensions) {
                         parallaxFactor = _pageController.page! - index;
                       }
-
-                      return Padding(
+                    return SingleChildScrollView(
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -144,6 +144,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             ),
                           ],
                         ),
+                      ),
                       );
                     },
                   );

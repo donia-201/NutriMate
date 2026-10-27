@@ -6,6 +6,7 @@ import 'package:nutri_mate/main.dart';
 void main() {
   testWidgets('NutriMate app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const NutriMateApp());
+    await tester.pumpAndSettle(const Duration(seconds: 4));
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
