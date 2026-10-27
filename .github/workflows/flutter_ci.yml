@@ -32,5 +32,5 @@ jobs:
         run: flutter analyze
 
       - name: Run Unit & Widget Tests
-        run: flutter tes
+        run: flutter test
           
