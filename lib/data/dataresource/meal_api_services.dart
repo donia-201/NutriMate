@@ -1,69 +1,125 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/meal.model.dart';
+import 'package:dio/dio.dart';
+
+import '../../core/network/dio_client.dart';
+import '../../core/network/api_exception.dart';
+import '../models/meal_model.dart';
 
 class MealApiService {
-  static const String _baseUrl = 'https://www.themealdb.com/api/json/v1/1/';
-  final http.Client _client;
-  MealApiService({http.Client? client}) : _client = client ?? http.Client();
+  MealApiService({DioClient? client})
+    : _client = client ?? DioClient(),
+      _ownsClient = client == null;
 
-  Future<Map<String, dynamic>> _getJson(String endpoint) async {
-    final response = await _client.get(Uri.parse('$_baseUrl$endpoint'))
-        .timeout(const Duration(seconds: 12));
-    if (response.statusCode != 200) {
-      throw Exception('TheMealDB request failed (${response.statusCode}).');
-    }
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected TheMealDB response.');
-    }
-    return decoded;
-  }
+  final DioClient _client;
+  final bool _ownsClient;
 
   Future<MealModel?> getRandomMeal() async {
-    final meals = (await _getJson('random.php'))['meals'];
-    if (meals is List && meals.isNotEmpty && meals.first is Map) {
-      return MealModel.fromJson(Map<String, dynamic>.from(meals.first as Map));
-    }
-    return null;
-  }
+    try {
+      final response = await _client.get('random.php');
 
-  Future<MealModel?> getMealById(String id) async {
-    if (id.trim().isEmpty) return null;
-    final meals = (await _getJson('lookup.php?i=${Uri.encodeQueryComponent(id)}'))['meals'];
-    if (meals is List && meals.isNotEmpty && meals.first is Map) {
-      return MealModel.fromJson(Map<String, dynamic>.from(meals.first as Map));
+      final meals = response.data['meals'] as List?;
+
+      if (meals == null || meals.isEmpty) {
+        return null;
+      }
+
+      return MealModel.fromJson(Map<String, dynamic>.from(meals.first));
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    } catch (_) {
+      throw ApiException(message: 'Could not load a random meal.');
     }
-    return null;
   }
 
   Future<List<String>> getCategories() async {
-    final categories = (await _getJson('categories.php'))['categories'];
-    if (categories is! List) return [];
-    return categories.whereType<Map>()
-        .map((e) => (e['strCategory'] ?? '').toString())
-        .where((e) => e.isNotEmpty).toList();
-  }
+    try {
+      final response = await _client.get(
+        'list.php',
+        queryParameters: {'c': 'list'},
+      );
 
-  Future<List<MealModel>> getMealsByCategory(String category) async {
-    final data = await _getJson('filter.php?c=${Uri.encodeQueryComponent(category)}');
-    final meals = data['meals'];
-    if (meals is! List) return [];
-    return meals.whereType<Map>().map((e) => MealModel.fromFilterJson(
-      Map<String, dynamic>.from(e), category: category,
-    )).where((m) => m.idMeal.isNotEmpty).toList();
+      final categories = response.data['meals'] as List?;
+
+      if (categories == null) return [];
+
+      return categories.map((item) => item['strCategory'].toString()).toList();
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    } catch (_) {
+      throw ApiException(message: 'Could not load meal categories.');
+    }
   }
 
   Future<List<MealModel>> getPopularMeals() async {
-    final seafood = await getMealsByCategory('Seafood');
-    final pasta = await getMealsByCategory('Pasta');
-    final unique = <String, MealModel>{};
-    for (final meal in [...seafood, ...pasta]) {
-      unique.putIfAbsent(meal.idMeal, () => meal);
-      if (unique.length == 6) break;
+    try {
+      final response = await _client.get(
+        'search.php',
+        queryParameters: {'s': 'chicken'},
+      );
+
+      final meals = response.data['meals'] as List?;
+
+      if (meals == null) return [];
+
+      return meals
+          .map((item) => MealModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    } catch (_) {
+      throw ApiException(message: 'Could not load suggested meals.');
     }
-    return unique.values.toList();
   }
 
-  void dispose() => _client.close();
+  Future<List<MealModel>> getMealsByCategory(String category) async {
+    try {
+      final response = await _client.get(
+        'filter.php',
+        queryParameters: {'c': category},
+      );
+
+      final meals = response.data['meals'] as List?;
+
+      if (meals == null) return [];
+
+      return meals
+          .map(
+            (item) => MealModel.fromFilterJson(
+              Map<String, dynamic>.from(item),
+              category: category,
+            ),
+          )
+          .toList();
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    } catch (_) {
+      throw ApiException(message: 'Could not load meals for this category.');
+    }
+  }
+
+  Future<MealModel?> getMealById(String id) async {
+    try {
+      final response = await _client.get(
+        'lookup.php',
+        queryParameters: {'i': id},
+      );
+
+      final meals = response.data['meals'] as List?;
+
+      if (meals == null || meals.isEmpty) {
+        return null;
+      }
+
+      return MealModel.fromJson(Map<String, dynamic>.from(meals.first));
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    } catch (_) {
+      throw ApiException(message: 'Could not load meal details.');
+    }
+  }
+
+  void dispose() {
+    if (_ownsClient) {
+      _client.dispose();
+    }
+  }
 }
