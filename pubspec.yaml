@@ -37,6 +37,8 @@ dependencies:
   dio: ^5.11.1
 
 dev_dependencies:
+  mocktail: ^1.0.4
+  shared_preferences_platform_interface: ^2.4.1
   integration_test:
     sdk: flutter
   flutter_test:
