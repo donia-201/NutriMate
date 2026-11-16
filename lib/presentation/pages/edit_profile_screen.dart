@@ -107,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: AppTheme.label.copyWith(color: c.onSurface)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _dietary,
+              initialValue: _dietary,
               dropdownColor: c.surface,
               style: AppTheme.body.copyWith(color: c.onSurface),
               items: ProfileCubit.dietOptions
