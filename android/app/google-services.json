@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "991335309583",
+    "project_id": "nutrimate-26943",
+    "storage_bucket": "nutrimate-26943.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:991335309583:android:5935fccea6ac5bfc725e7a",
+        "android_client_info": {
+          "package_name": "com.example.nutrimate"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "991335309583-dlqhh3t7rmb3saoia054lsq9h75lfcmm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nutrimate",
+            "certificate_hash": "978a82b2bb8dbd5f33483eea8edd60ca567dc844"
+          }
+        },
+        {
+          "client_id": "991335309583-34a8k9985majjtmjp5fqged6jcrojdv4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBH461PgBjXUHyfyNwvZTLxe4FoRUuznPU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "991335309583-34a8k9985majjtmjp5fqged6jcrojdv4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "991335309583-m0sakkm2ahq1up3nuc91rvuet71ba62m.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nutrimate"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
