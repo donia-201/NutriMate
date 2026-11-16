@@ -7,14 +7,20 @@ import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 
 import 'package:nutrimate/core/app_widgets.dart';
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+  const AuthGate({super.key, this.auth, this.homeBuilder, this.signInBuilder});
+
+  final FirebaseAuth? auth;
+  final WidgetBuilder? homeBuilder;
+
+  /// Injected in tests so the real SignInScreen (needs Firebase) isn't built.
+  final WidgetBuilder? signInBuilder;
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
+    final firebaseAuth = auth ?? FirebaseAuth.instance;
 
-
-  return StreamBuilder<User?>(
-  stream: FirebaseAuth.instance.authStateChanges(),
+    return StreamBuilder<User?>(
+        stream: firebaseAuth.authStateChanges(),
   builder:(context, snapshot){
     if( snapshot.hasError){
       return Scaffold(
@@ -35,6 +41,7 @@ class AuthGate extends StatelessWidget {
       );
     }
     if(snapshot.hasData==false){
+      if (signInBuilder != null) return signInBuilder!(context);
 
 
       return Theme(
@@ -89,7 +96,7 @@ class AuthGate extends StatelessWidget {
             AppButton(
               label: 'Continue as Guest',
               outlined: true,
-              onPressed: () => FirebaseAuth.instance.signInAnonymously(),
+              onPressed: () => firebaseAuth.signInAnonymously(),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -104,7 +111,7 @@ class AuthGate extends StatelessWidget {
       );
 
     }
-    return const HomePage();
+    return homeBuilder?.call(context) ?? const HomePage();
     }
 
   );
