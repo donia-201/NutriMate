@@ -19,24 +19,41 @@ class ProfileState {
 class ProfileCubit extends Cubit<ProfileState> {
   static const _dietKey = 'dietary';
   static const _calorieKey = 'calorieGoal';
-  static const keys = {_dietKey, _calorieKey}; // للـ allowList
-  static const dietOptions = ['None', 'Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free'];
+  static const keys = {_dietKey, _calorieKey}; // for the allowList
+  static const dietOptions = [
+    'None',
+    'Vegetarian',
+    'Vegan',
+    'Gluten-free',
+    'Dairy-free',
+  ];
 
   final SharedPreferencesWithCache _prefs;
+  final FirebaseAuth _auth;
 
-  ProfileCubit(this._prefs) : super(_load(_prefs));
+  ProfileCubit(SharedPreferencesWithCache prefs, {FirebaseAuth? auth})
+      : _prefs = prefs,
+        _auth = auth ?? FirebaseAuth.instance,
+        super(_load(prefs, auth ?? FirebaseAuth.instance));
 
-  static ProfileState _load(SharedPreferencesWithCache p) {
-    final user = FirebaseAuth.instance.currentUser;
-    final email = user?.email ?? '';
-    final name = (user?.displayName?.trim().isNotEmpty ?? false)
-        ? user!.displayName!.trim()
-        : (email.contains('@') ? email.split('@').first : 'Guest');
+  /// Picks the best name to show: display name, then email prefix, then Guest.
+  static String nameFor(User? user) {
+    final displayName = user?.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+
+    final email = user?.email;
+    if (email != null && email.contains('@')) return email.split('@').first;
+
+    return 'Guest';
+  }
+
+  static ProfileState _load(SharedPreferencesWithCache prefs, FirebaseAuth auth) {
+    final user = auth.currentUser;
     return ProfileState(
-      name: name,
-      email: email,
-      dietary: p.getString(_dietKey) ?? 'None',
-      calorieGoal: p.getInt(_calorieKey) ?? 2000,
+      name: nameFor(user),
+      email: user?.email ?? '',
+      dietary: prefs.getString(_dietKey) ?? 'None',
+      calorieGoal: prefs.getInt(_calorieKey) ?? 2000,
     );
   }
 
@@ -45,7 +62,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     required String dietary,
     required int calorieGoal,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _auth.currentUser;
     if (user != null && name != state.name) {
       await user.updateDisplayName(name);
       await user.reload();
