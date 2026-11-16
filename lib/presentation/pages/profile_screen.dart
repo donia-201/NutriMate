@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutrimate/core/app_theme.dart';
 import 'package:nutrimate/core/app_widgets.dart';
-import 'package:nutrimate/profile_cubit.dart';
-import 'package:nutrimate/settings_cubit.dart';
+import 'package:nutrimate/presentation/cubit/profile_cubit.dart';
+import 'package:nutrimate/presentation/cubit/settings_cubit.dart';
 import 'package:nutrimate/presentation/pages/edit_profile_screen.dart';
 import 'package:nutrimate/presentation/pages/about_screen.dart';
 
