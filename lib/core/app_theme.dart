@@ -19,46 +19,54 @@ class AppColors {
   static const Color warning = Color(0xFFFFA500);
   static const Color white = Colors.white;
   static const Color border = Color(0xFFCFC9B8);
+
+
+
+  // ---------- Dark ----------
+  static const Color darkBackground = Color(0xFF1E1F18); // background/cream (dark)
+  static const Color darkSurface    = Color(0xFF303229); // surface/white (dark)
+  static const Color darkElevated   = Color(0xFF33332B); // surface-elevated
+  static const Color darkTextPrimary   = Color(0xFFF6EDDC);
+  static const Color darkTextSecondary = Color(0xFFC9C4B0);
+  static const Color darkAccent     = Color(0xFF9DB5A0); // accent-primary
+  static const Color darkTextOnAccent  = Color(0xFF1C1B18);
+  static const Color darkBorder = Color(0xFF3D3F33);
+
+// ---------- Favorite heart ----------
+  static const Color heart = Color(0xFFC9A27A);
 }
 
 class AppTheme {
   static const TextStyle titleBold= TextStyle(
     fontSize:28,
     fontWeight: FontWeight.bold,
-    color: AppColors.textDark,
     height: 1.2,
   );
   static const TextStyle subTitle= TextStyle(
     fontSize:15,
     fontWeight: FontWeight.w400,
-    color: AppColors.textMuted,
     height: 1.2,
   );
   static const TextStyle buttonText= TextStyle(
     fontSize:16,
     fontWeight: FontWeight.bold,
-    color: AppColors.buttonText,
 
   );
   static const TextStyle skipText= TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
-    color: AppColors.textDark,
   );
   static const TextStyle label = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w600,
-    color: AppColors.textDark,
   );
   static const TextStyle body = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.textDark,
   );
   static const TextStyle small = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.textMuted,
     height: 1.4,
   );
   static const _radius = BorderRadius.all(Radius.circular(16));
@@ -71,19 +79,72 @@ class AppTheme {
         borderSide: color == null ? BorderSide.none : BorderSide(color: color, width: width),
       );
 
-  static final outlinedStyle = OutlinedButton.styleFrom(
-    backgroundColor: AppColors.white,
-    foregroundColor: AppColors.textDark,
+  static ButtonStyle outlined(ColorScheme c) => OutlinedButton.styleFrom(
+    backgroundColor: c.surface,
+    foregroundColor: c.onSurface,
     minimumSize: _minSize,
-    side: const BorderSide(color: AppColors.border),
+    side: BorderSide(color: c.outline),
     shape: _shape,
     textStyle: skipText,
   );
 
+  static ThemeData get dark => ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.darkBackground,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.darkAccent,
+      onPrimary: AppColors.darkTextOnAccent,
+      surface: AppColors.darkSurface,
+      onSurface: AppColors.darkTextPrimary,
+      onSurfaceVariant: AppColors.darkTextSecondary,
+      outline: AppColors.darkBorder,
+      error: AppColors.error,
+    ),
+    textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+    cardTheme: CardThemeData(
+      color: AppColors.darkSurface,
+      elevation: 0,
+      shape: _shape,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.darkSurface,
+      contentPadding: const EdgeInsets.all(16),
+      hintStyle: body.copyWith(color: AppColors.textHint),
+      border: _border(),
+      enabledBorder: _border(),
+      focusedBorder: _border(AppColors.darkAccent, 1.5),
+      errorBorder: _border(AppColors.error),
+      focusedErrorBorder: _border(AppColors.error, 1.5),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.darkAccent,
+        foregroundColor: AppColors.darkTextOnAccent,
+        minimumSize: _minSize,
+        elevation: 0,
+        shape: _shape,
+        textStyle: skipText,
+      ),
+
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: outlined(const ColorScheme.dark(
+        surface: AppColors.darkSurface,
+        onSurface: AppColors.darkTextPrimary,
+        outline: AppColors.darkBorder,
+      )),
+    ),
+  );
 
   static ThemeData get light => ThemeData(
     scaffoldBackgroundColor: AppColors.background,
-    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen),
+    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen).copyWith(
+      surface: AppColors.surface,
+      onSurface: AppColors.textDark,
+      onSurfaceVariant: AppColors.textMuted,
+      outline: AppColors.border,
+    ),
     textTheme: GoogleFonts.poppinsTextTheme(),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -108,8 +169,9 @@ class AppTheme {
         textStyle: skipText,
       ),
     ),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: outlinedStyle),
-  );
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: outlined(ColorScheme.fromSeed(seedColor: AppColors.primaryGreen)),
+    ),  );
 
   static ThemeData authTheme(ThemeData base) => base.copyWith(
     colorScheme: base.colorScheme.copyWith(

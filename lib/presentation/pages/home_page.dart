@@ -1,0 +1,359 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nutrimate/core/Bottom_Nav.dart';
+import 'package:nutrimate/core/app_theme.dart';
+
+import 'package:nutrimate/home_cubit.dart';
+import 'package:nutrimate/home_state.dart';
+import 'package:nutrimate/models/meal.model.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nutrimate/presentation/pages/settings_screen.dart';
+
+class HomePage extends StatelessWidget {
+  final String userName;
+  const HomePage({super.key, this.userName = 'user'});
+
+  @override
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => HomeCubit()..initialize(),
+    child: _HomeView(userName: userName),
+  );
+}
+
+class _HomeView extends StatefulWidget {
+  final String userName;
+  const _HomeView({required this.userName});
+  @override
+  State<_HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<_HomeView> {
+  int _currentBottomNavIndex = 0;
+
+  @override
+  Widget build(BuildContext context) => BlocBuilder<HomeCubit, HomeState>(
+    builder: (context, state) {
+      final c = Theme.of(context).colorScheme;
+      final cubit = context.read<HomeCubit>();
+      return Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Hello,  ${currentUserName()}', style:  TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold, color: c.onSurface)),
+                  const SizedBox(height: 2),
+                   Text("Let's make today feel good.",
+                      style: TextStyle(fontSize: 14, color: c.onSurface)),
+                ]),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: c.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    ),
+                    icon:  Icon(
+                      Icons.person_outline,
+                      color: c.onSurface,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 20),
+              Container(height: 52, padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(30),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha : .02), blurRadius: 10,
+                          offset: const Offset(0, 2))]),
+                  child: Row(children: [
+                    Icon(Icons.search, color: c.onSurface, size: 22), const SizedBox(width: 10),
+                    Expanded(child: TextField(decoration: InputDecoration(
+                        hintText: 'Search recipes, cuisines, ingredients',
+                        hintStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 13.5),
+                        border: InputBorder.none, isDense: true))),
+                    Icon(Icons.tune, color:c.onSurfaceVariant, size: 20),
+                  ])),
+              const SizedBox(height: 14),
+              if (!state.isOnline) _offlineNotice(state, cubit),
+              const SizedBox(height: 10),
+               Text('Meal of the Day', style: TextStyle(fontSize: 18,
+                  fontWeight: FontWeight.bold, color: c.onSurface)),
+              const SizedBox(height: 12),
+              if (state.isLoading && state.mealOfDay == null)
+                Container(height: 240, decoration: BoxDecoration(color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(24)),
+                    child: Center(child: CircularProgressIndicator(color:c.primary)))
+              else if (state.mealOfDay != null)
+                _mealCard(state.mealOfDay!, state, cubit)
+              else
+                _emptyCard(state.errorMessage ?? 'No recipes available. Check your connection.'),
+              const SizedBox(height: 24),
+              _nutritionCard(),
+              const SizedBox(height: 20),
+              if (state.categories.isNotEmpty)
+                Wrap(spacing: 8, runSpacing: 10, children: state.categories.map((category) =>
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(25)),
+                        child: Text(category, style: TextStyle(color: c.onSurface,
+                            fontSize: 13.5, fontWeight: FontWeight.w500)))).toList())
+              else if (state.isLoading)
+                LinearProgressIndicator(color: c.primary),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: ElevatedButton(onPressed: () {}, style: ElevatedButton.styleFrom(
+                    backgroundColor: c.primary, elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child:  Text('Log a meal', style: TextStyle(color: c.onPrimary,
+                        fontWeight: FontWeight.w600, fontSize: 14)))),
+                const SizedBox(width: 12),
+                Expanded(child: OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(
+                    backgroundColor: c.surface, side: BorderSide.none,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: Text('Meal Log / Insights', style: TextStyle(color: c.onSurface,
+                        fontWeight: FontWeight.w600, fontSize: 13.5)))),
+              ]),
+              const SizedBox(height: 32),
+              Text('For your everyday', style: TextStyle(fontSize: 20,
+                  fontWeight: FontWeight.bold, color: c.onSurface)),
+              Text('Home feed • scroll continuation',
+                  style: TextStyle(fontSize: 12, color: c.onSurfaceVariant)),
+              const SizedBox(height: 20),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('Popular Recipes', style: TextStyle(fontSize: 18,
+                    fontWeight: FontWeight.bold, color: c.onSurface)),
+                 Text('See all', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
+              ]),
+              const SizedBox(height: 12),
+              if (state.popularMeals.isEmpty && state.isLoading)
+                Center(child: CircularProgressIndicator(color: c.primary))
+              else if (state.popularMeals.isEmpty)
+                Text('No cached popular recipes available.',
+                    style: TextStyle(color:c.onSurfaceVariant))
+              else
+                ...state.popularMeals.map((meal) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _popularTile(meal, state.favoriteIds.contains(meal.idMeal),
+                            () => cubit.toggleFavorite(meal)))),
+              const SizedBox(height: 16),
+               Text('Healthy Swaps', style: TextStyle(fontSize: 18,
+                  fontWeight: FontWeight.bold, color: c.onSurface)),
+              const SizedBox(height: 12),
+              Container(padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(24)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Try this instead', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(12),
+                          child: Image.network('https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
+                              height: 90, fit: BoxFit.cover, errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 90)))),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Icon(Icons.arrow_forward, color: c.onSurface, size: 20)),
+                      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(12),
+                          child: Image.network('https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400',
+                              height: 90, fit: BoxFit.cover, errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 90)))),
+                    ]),
+                    const SizedBox(height: 12),
+                     Text('Chocolate Cake → Greek Yogurt Berry Bowl',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: c.onSurface)),
+                    const SizedBox(height: 4),
+                     Text('More protein, less added sugar. Still a sweet moment.',
+                        style: TextStyle(fontSize: 12, color: c.onSurfaceVariant)),
+                    const SizedBox(height: 14),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () {},
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.background, elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(vertical: 12)),
+                        child: Text('View swap', style: TextStyle(color: c.onSurface,
+                            fontWeight: FontWeight.w600, fontSize: 13.5)))),
+                  ])),
+              const SizedBox(height: 20),
+            ]),
+          ),
+        ),
+        bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex,
+            onTap: (index) => setState(() => _currentBottomNavIndex = index)),
+      );
+    },
+  );
+
+  Widget _offlineNotice(HomeState state, HomeCubit cubit) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [
+        Icon(Icons.wifi_off, size: 18, color: c.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(child: Text(
+            state.errorMessage ?? 'Offline mode — showing saved recipes.',
+            style: TextStyle(fontSize: 12, color: c.onSurfaceVariant))),
+        TextButton(onPressed: cubit.refresh, child: const Text('Retry')),
+      ]),
+    );
+  }
+  Widget _mealCard(MealModel meal, HomeState state, HomeCubit cubit) {
+final c = Theme.of(context).colorScheme;
+    final fav = state.favoriteIds.contains(meal.idMeal);
+    return Container(decoration: BoxDecoration(color: c.surface,
+        borderRadius: BorderRadius.circular(24)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: Image.network(meal.strMealThumb, height: 180, width: double.infinity, fit: BoxFit.cover,
+                errorBuilder: (_ , _ ,  _ ) => _imageFallback(height: 180))),
+        Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(meal.strMeal, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.onSurface)),
+            const SizedBox(height: 4),
+            Text('${meal.strCategory ?? 'Meal'} • ${meal.strArea ?? 'International'}',
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: c.onSurfaceVariant)),
+          ])),
+          const SizedBox(width: 10),
+          Column(children: [
+            Text('— kcal', style: TextStyle(fontWeight: FontWeight.w700,
+                fontSize: 13.5, color: c.onSurface)),
+            IconButton(constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                padding: EdgeInsets.zero, onPressed: () => cubit.toggleFavorite(meal),
+                tooltip: fav ? 'Remove from favorites' : 'Add to favorites',
+                icon: Icon(fav ? Icons.favorite : Icons.favorite_border,
+                    color: fav ? AppColors.accentHeart : c.onSurfaceVariant, size: 22)),
+          ]),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _nutritionCard() {
+    final c = Theme
+        .of(context)
+        .colorScheme;
+    return Container(padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+          color: c.surface, borderRadius: BorderRadius.circular(24)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text("Today's Nutrition", style: TextStyle(fontSize: 18,
+            fontWeight: FontWeight.bold, color: c.onSurface)),
+        const SizedBox(height: 16),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+          _macroRing('1,240', 'Calories', true),
+          _macroRing('76g', 'Protein\nTarget not set', false),
+          _macroRing('142g', 'Carbs\nTarget not set', false),
+          _macroRing('41g', 'Fat\nTarget not set', false),
+        ]),
+        const SizedBox(height: 14),
+        Center(
+            child: Text('Calories: 1,240 / 2,000 kcal • Macro targets not set',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11.5, color: c.onSurfaceVariant))),
+      ]),
+    );
+  }
+  Widget _macroRing(String value, String label, bool primary) {
+    final c = Theme
+        .of(context)
+        .colorScheme;
+    return Column(children: [
+      Container(width: 58,
+          height: 58,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+              border: Border.all(
+                  color: primary ? AppColors.accentHeart : c.outline,
+                  width: 3.5)),
+          child: Center(child: Text(value, style:  TextStyle(fontSize: 12,
+              fontWeight: FontWeight.bold, color: c.onSurface)))),
+      const SizedBox(height: 6),
+      Text(label, textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: 10, color: c.onSurfaceVariant, height: 1.2)),
+    ]);
+  }
+  Widget _popularTile(MealModel meal, bool fav, VoidCallback onTap) {
+    final c = Theme
+        .of(context)
+        .colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: c.surface, borderRadius: BorderRadius.circular(20)),
+      child: Row(children: [
+        ClipRRect(borderRadius: BorderRadius.circular(14),
+            child: Image.network(
+                meal.strMealThumb, width: 65, height: 65, fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    _imageFallback(width: 65, height: 65))),
+        const SizedBox(width: 12),
+        Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(meal.strMeal, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: c.onSurface)),
+          const SizedBox(height: 2),
+          Text('${meal.strCategory ?? 'Recipe'} • ${meal.strArea ??
+              'International'}',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: c.onSurfaceVariant)),
+          const SizedBox(height: 2),
+          Text('Nutrition data unavailable',
+              style: TextStyle(fontSize: 11.5, color: c.onSurfaceVariant)),
+        ])),
+        IconButton(onPressed: onTap, padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            icon: Icon(fav ? Icons.favorite : Icons.favorite_border,
+                color: fav ? AppColors.accentHeart : c.onSurfaceVariant,
+                size: 20)),
+      ]),
+    );
+  }
+
+  Widget _emptyCard(String message) {
+    final c = Theme
+        .of(context)
+        .colorScheme;
+    return Container(width: double.infinity, padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+            color: c.surface, borderRadius: BorderRadius.circular(24)),
+        child: Text(
+            message, style:  TextStyle(color: c.onSurfaceVariant)));
+  }
+  Widget _imageFallback({double? width, double? height}) {
+    final c = Theme
+        .of(context)
+        .colorScheme;
+    return Container(
+        width: width,
+        height: height,
+        color: c.outline,
+        alignment: Alignment.center,
+        child:  Icon(Icons.restaurant, color: c.onSurfaceVariant));
+  }
+  String currentUserName() {
+    final user = FirebaseAuth.instance.currentUser;
+    final name = user?.displayName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+
+    final email = user?.email;
+    if (email != null && email.contains('@')) return email.split('@').first;
+
+    return 'Guest';
+  }
+
+
+}

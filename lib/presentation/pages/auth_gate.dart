@@ -1,18 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart'hide EmailAuthProvider;
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:nutrimate/screens/home_page.dart';
-
-import '../core/app_theme.dart';
-
+import 'package:nutrimate/presentation/pages/home_page.dart';
+import 'package:nutrimate/core/app_theme.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 
-import '../core/app_widgets.dart';
+import 'package:nutrimate/core/app_widgets.dart';
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context){
+
 
   return StreamBuilder<User?>(
   stream: FirebaseAuth.instance.authStateChanges(),
