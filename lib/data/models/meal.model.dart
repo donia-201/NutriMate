@@ -22,19 +22,23 @@ class MealModel {
   factory MealModel.fromJson(Map<String, dynamic> json) => MealModel(
     idMeal: (json['idMeal'] ?? '').toString(),
     strMeal: (json['strMeal'] ?? '').toString(),
-    strCategory: json['strCategory']?.toString(),
-    strArea: json['strArea']?.toString(),
+    strCategory: _optionalText(json['strCategory']),
+    strArea: _optionalText(json['strArea']),
     strMealThumb: (json['strMealThumb'] ?? '').toString(),
-    strInstructions: json['strInstructions']?.toString(),
-    strYoutube: json['strYoutube']?.toString(),
-    detailsLoaded: json['strInstructions'] != null,
+    strInstructions: _optionalText(json['strInstructions']),
+    strYoutube: _optionalText(json['strYoutube']),
+    detailsLoaded: _optionalText(json['strInstructions']) != null,
   );
 
-  factory MealModel.fromFilterJson(Map<String, dynamic> json, {String? category}) => MealModel(
+  factory MealModel.fromFilterJson(
+    Map<String, dynamic> json, {
+    String? category,
+    String? area,
+  }) => MealModel(
     idMeal: (json['idMeal'] ?? '').toString(),
     strMeal: (json['strMeal'] ?? '').toString(),
-    strCategory: category ?? json['strCategory']?.toString(),
-    strArea: json['strArea']?.toString(),
+    strCategory: category ?? _optionalText(json['strCategory']),
+    strArea: area ?? _optionalText(json['strArea']),
     strMealThumb: (json['strMealThumb'] ?? '').toString(),
   );
 
@@ -50,18 +54,30 @@ class MealModel {
   );
 
   Map<String, Object?> toDbMap() => {
-    'idMeal': idMeal, 'strMeal': strMeal, 'strCategory': strCategory,
-    'strArea': strArea, 'strMealThumb': strMealThumb,
-    'strInstructions': strInstructions, 'strYoutube': strYoutube,
+    'idMeal': idMeal,
+    'strMeal': strMeal,
+    'strCategory': strCategory,
+    'strArea': strArea,
+    'strMealThumb': strMealThumb,
+    'strInstructions': strInstructions,
+    'strYoutube': strYoutube,
     'detailsLoaded': detailsLoaded ? 1 : 0,
   };
+
+  static String? _optionalText(Object? value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
 
   MealModel mergeDetails(MealModel details) => MealModel(
     idMeal: idMeal,
     strMeal: details.strMeal.isNotEmpty ? details.strMeal : strMeal,
     strCategory: details.strCategory ?? strCategory,
     strArea: details.strArea ?? strArea,
-    strMealThumb: details.strMealThumb.isNotEmpty ? details.strMealThumb : strMealThumb,
+    strMealThumb: details.strMealThumb.isNotEmpty
+        ? details.strMealThumb
+        : strMealThumb,
     strInstructions: details.strInstructions,
     strYoutube: details.strYoutube,
     detailsLoaded: details.detailsLoaded,

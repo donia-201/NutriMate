@@ -8,6 +8,7 @@ class HomeState {
   final List<String> categories;
   final List<MealModel> favorites;
   final String? errorMessage;
+  final String? favoriteDetailErrorMessage;
 
   const HomeState({
     this.isLoading = true,
@@ -17,15 +18,23 @@ class HomeState {
     this.categories = const [],
     this.favorites = const [],
     this.errorMessage,
+    this.favoriteDetailErrorMessage,
   });
 
   Set<String> get favoriteIds => favorites.map((m) => m.idMeal).toSet();
 
   HomeState copyWith({
-    bool? isLoading, bool? isOnline, MealModel? mealOfDay,
-    bool clearMealOfDay = false, List<MealModel>? popularMeals,
-    List<String>? categories, List<MealModel>? favorites,
-    String? errorMessage, bool clearError = false,
+    bool? isLoading,
+    bool? isOnline,
+    MealModel? mealOfDay,
+    bool clearMealOfDay = false,
+    List<MealModel>? popularMeals,
+    List<String>? categories,
+    List<MealModel>? favorites,
+    String? errorMessage,
+    bool clearError = false,
+    String? favoriteDetailErrorMessage,
+    bool clearFavoriteDetailError = false,
   }) => HomeState(
     isLoading: isLoading ?? this.isLoading,
     isOnline: isOnline ?? this.isOnline,
@@ -34,5 +43,8 @@ class HomeState {
     categories: categories ?? this.categories,
     favorites: favorites ?? this.favorites,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    favoriteDetailErrorMessage: clearFavoriteDetailError
+        ? null
+        : (favoriteDetailErrorMessage ?? this.favoriteDetailErrorMessage),
   );
 }

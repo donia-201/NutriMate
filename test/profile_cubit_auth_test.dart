@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
 import 'package:mocktail/mocktail.dart';
 import 'package:nutri_mate/presentation/cubit/profile_cubit.dart';
 
@@ -12,18 +13,30 @@ class MockUser extends Mock implements User {}
 void main() {
   late MockFirebaseAuth auth;
   late MockUser user;
+  late StreamController<User?> authStream;
 
   setUp(() {
     auth = MockFirebaseAuth();
     user = MockUser();
+    authStream = StreamController<User?>();
     when(() => auth.currentUser).thenReturn(user);
+    when(() => auth.authStateChanges()).thenAnswer((_) => authStream.stream);
     when(() => user.displayName).thenReturn(null);
     when(() => user.email).thenReturn('sara@example.com');
     when(() => user.updateDisplayName(any())).thenAnswer((_) async {});
     when(() => user.reload()).thenAnswer((_) async {});
   });
 
+  tearDown(() => authStream.close());
+
   group('signed-in user name', () {
+    test('updates profile when auth state emits a signed-in user', () async {
+      final cubit = ProfileCubit(await makeTestPrefs(), auth: auth);
+      authStream.add(user);
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.email, 'sara@example.com');
+      await cubit.close();
+    });
     test('uses the display name when available', () async {
       when(() => user.displayName).thenReturn('  Sara Ali  ');
       final cubit = ProfileCubit(await makeTestPrefs(), auth: auth);
@@ -33,13 +46,15 @@ void main() {
       await cubit.close();
     });
 
-    test('falls back to the email prefix when there is no display name',
-            () async {
-          final cubit = ProfileCubit(await makeTestPrefs(), auth: auth);
+    test(
+      'falls back to the email prefix when there is no display name',
+      () async {
+        final cubit = ProfileCubit(await makeTestPrefs(), auth: auth);
 
-          expect(cubit.state.name, 'sara');
-          await cubit.close();
-        });
+        expect(cubit.state.name, 'sara');
+        await cubit.close();
+      },
+    );
 
     test('shows Guest for an anonymous user without an email', () async {
       when(() => user.email).thenReturn(null);
@@ -81,6 +96,21 @@ void main() {
   });
 
   group('save', () {
+    test(
+      'save emits loading and an error when Firebase update fails',
+      () async {
+        final cubit = ProfileCubit(await makeTestPrefs(), auth: auth);
+        when(
+          () => user.updateDisplayName('Sara'),
+        ).thenThrow(FirebaseAuthException(code: 'unknown'));
+
+        await cubit.save(name: 'Sara', dietary: 'Vegan', calorieGoal: 1700);
+
+        expect(cubit.state.isLoading, isFalse);
+        expect(cubit.state.errorMessage, isNotNull);
+        await cubit.close();
+      },
+    );
     test('updates the Firebase display name when the name changed', () async {
       final prefs = await makeTestPrefs();
       final cubit = ProfileCubit(prefs, auth: auth);

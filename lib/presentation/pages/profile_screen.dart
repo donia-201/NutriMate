@@ -1,28 +1,55 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutri_mate/core/app_theme.dart';
 import 'package:nutri_mate/core/app_widgets.dart';
 import 'package:nutri_mate/presentation/cubit/profile_cubit.dart';
 import 'package:nutri_mate/presentation/cubit/settings_cubit.dart';
 import 'package:nutri_mate/presentation/pages/edit_profile_screen.dart';
+import 'package:nutri_mate/presentation/pages/settings_screen.dart';
 import 'package:nutri_mate/presentation/pages/about_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final FirebaseAuth? auth;
+  const ProfileScreen({super.key, this.auth});
 
-  void _soon(BuildContext context) => ScaffoldMessenger.of(context)
-      .showSnackBar(const SnackBar(content: Text('Coming soon')));
-
-  void _openEditProfile(BuildContext context) => Navigator.push(
+  void _soon(BuildContext context) => ScaffoldMessenger.of(
     context,
-    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-  );
+  ).showSnackBar(const SnackBar(content: Text('Coming soon')));
 
-  void _logout(BuildContext context) {
-    // لازم نرجع للـ root الأول، وإلا الشاشة هتفضل فوق الـ AuthGate
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    FirebaseAuth.instance.signOut();
+  Future<void> _openEditProfile(BuildContext context) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+  }
+
+  Future<void> _openSettings(BuildContext context) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+      await (auth ?? FirebaseAuth.instance).signOut();
+      if (!context.mounted) return;
+    } on FirebaseAuthException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Could not sign out.')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not sign out. Please try again.')),
+      );
+    }
   }
 
   @override
@@ -43,85 +70,113 @@ class ProfileScreen extends StatelessWidget {
         children: [
           // ---------- Header ----------
           AppCard(
-            child: Row(children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: c.outline.withValues(alpha: .4),
-                child: Icon(Icons.person_outline, size: 36, color: c.onSurface),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.titleBold
-                          .copyWith(fontSize: 20, color: c.onSurface),
-                    ),
-                    if (profile.email.isNotEmpty)
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: c.outline.withValues(alpha: .4),
+                  child: Icon(
+                    Icons.person_outline,
+                    size: 36,
+                    color: c.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        profile.email,
+                        profile.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                        style: AppTheme.titleBold.copyWith(
+                          fontSize: 20,
+                          color: c.onSurface,
+                        ),
                       ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () => _openEditProfile(context),
-                      child: Text(
-                        'Edit Profile',
-                        style: AppTheme.label.copyWith(color: c.primary),
+                      if (profile.email.isNotEmpty)
+                        Text(
+                          profile.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.small.copyWith(
+                            color: c.onSurfaceVariant,
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => _openEditProfile(context),
+                        child: Text(
+                          'Edit Profile',
+                          style: AppTheme.label.copyWith(color: c.primary),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
           // ---------- Meals ----------
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(children: [
-              _MenuTile(Icons.favorite_border, 'Favorite Meals', () => _soon(context)),
-              _MenuTile(Icons.calendar_today_outlined, 'Planned Meals', () => _soon(context)),
-              _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
-            ]),
+            child: Column(
+              children: [
+                _MenuTile(
+                  Icons.favorite_border,
+                  'Favorite Meals',
+                  () => _soon(context),
+                ),
+                _MenuTile(
+                  Icons.calendar_today_outlined,
+                  'Planned Meals',
+                  () => _soon(context),
+                ),
+                _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
           // ---------- Settings ----------
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(children: [
-              SwitchListTile(
-                secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),
-                title: Text(
-                  'Dark mode',
-                  style: AppTheme.label.copyWith(color: c.onSurface),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),
+                  title: Text(
+                    'Dark mode',
+                    style: AppTheme.label.copyWith(color: c.onSurface),
+                  ),
+                  value: isDark,
+                  onChanged: (v) =>
+                      context.read<SettingsCubit>().setDarkMode(v),
                 ),
-                value: isDark,
-                onChanged: (v) => context.read<SettingsCubit>().setDarkMode(v),
-              ),
-              _MenuTile(
-                Icons.info_outline,
-                'About',
-                    () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                _MenuTile(
+                  Icons.info_outline,
+                  'About',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  ),
                 ),
-              ),
-              _MenuTile(
-                Icons.logout,
-                'Logout',
-                    () => _logout(context),
-                trailing: false,
-              ),
-            ]),
+                _MenuTile(
+                  Icons.settings_outlined,
+                  'Settings',
+                  () => _openSettings(context),
+                ),
+                _MenuTile(
+                  Icons.logout,
+                  'Logout',
+                  () => _logout(context),
+                  trailing: false,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -136,16 +191,18 @@ class ProfileScreen extends StatelessWidget {
           // ---------- Sync status ----------
           AppCard(
             padding: const EdgeInsets.all(12),
-            child: Row(children: [
-              Icon(Icons.sync, size: 18, color: c.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Synced across devices · Simulated sync status',
-                  style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+            child: Row(
+              children: [
+                Icon(Icons.sync, size: 18, color: c.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Synced across devices · Simulated sync status',
+                    style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ],
       ),
@@ -165,6 +222,12 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     return ListTile(
+      tileColor: c.surface,
+      splashColor: c.primary.withValues(alpha: 0.16),
+      hoverColor: c.primary.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      ),
       leading: Icon(icon, color: c.onSurface),
       title: Text(title, style: AppTheme.label.copyWith(color: c.onSurface)),
       trailing: trailing ? Icon(Icons.chevron_right, color: c.onSurface) : null,

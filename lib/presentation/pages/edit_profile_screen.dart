@@ -17,7 +17,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _email;
   late final TextEditingController _calories;
   late String _dietary;
-  bool _saving = false;
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _caloriesFocus = FocusNode();
 
   @override
   void initState() {
@@ -31,6 +32,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _nameFocus.dispose();
+    _caloriesFocus.dispose();
     _name.dispose();
     _email.dispose();
     _calories.dispose();
@@ -39,22 +42,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    try {
-      await context.read<ProfileCubit>().save(
-        name: _name.text.trim(),
-        dietary: _dietary,
-        calorieGoal: int.parse(_calories.text.trim()),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile changes saved')));
+    await context.read<ProfileCubit>().save(
+      name: _name.text.trim(),
+      dietary: _dietary,
+      calorieGoal: int.parse(_calories.text.trim()),
+    );
+    if (!mounted) return;
+    final profile = context.read<ProfileCubit>().state;
+    if (profile.errorMessage == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile changes saved')));
       Navigator.pop(context);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save changes. Please try again.')));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(profile.errorMessage!)));
     }
   }
 
@@ -74,37 +77,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Row(children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: c.surface,
-                child: Icon(Icons.person_outline, size: 32, color: c.onSurface),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppButton(
-                  label: 'Choose from gallery',
-                  outlined: true,
-                  onPressed: () {}, // محتاجة image_picker، نضيفها بعدين
-                ),
-              ),
-            ]),
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: c.surface,
+              child: Icon(Icons.person_outline, size: 32, color: c.onSurface),
+            ),
             const SizedBox(height: 20),
             AppTextField(
               label: 'Name',
               controller: _name,
-              validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Please enter your name' : null,
+              focusNode: _nameFocus,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(_caloriesFocus),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Please enter your name'
+                  : null,
             ),
             const SizedBox(height: 16),
             AppTextField(
               label: 'Email',
               controller: _email,
-              enabled: false, // تغيير الإيميل محتاج verification، فسايباه للعرض بس
+              enabled:
+                  false, // تغيير الإيميل محتاج verification، فسايباه للعرض بس
             ),
             const SizedBox(height: 16),
-            Text('Dietary restrictions',
-                style: AppTheme.label.copyWith(color: c.onSurface)),
+            Text(
+              'Dietary restrictions',
+              style: AppTheme.label.copyWith(color: c.onSurface),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _dietary,
@@ -119,20 +120,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             AppTextField(
               label: 'Daily calorie goal (kcal)',
               controller: _calories,
+              focusNode: _caloriesFocus,
               keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
               validator: (v) {
                 final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < 500 || n > 10000) return 'Enter a number between 500 and 10000';
+                if (n == null || n < 500 || n > 10000) {
+                  return 'Enter a number between 500 and 10000';
+                }
                 return null;
               },
             ),
             const SizedBox(height: 24),
-            AppButton(label: 'Save changes', isLoading: _saving, onPressed: _save),
+            BlocBuilder<ProfileCubit, ProfileState>(
+              builder: (context, profile) => AppButton(
+                label: 'Save changes',
+                isLoading: profile.isLoading,
+                onPressed: profile.isLoading ? null : _save,
+              ),
+            ),
             const SizedBox(height: 12),
             AppButton(
               label: 'Cancel',
               outlined: true,
-              onPressed: _saving ? null : () => Navigator.pop(context),
+              onPressed: context.watch<ProfileCubit>().state.isLoading
+                  ? null
+                  : () => Navigator.pop(context),
             ),
           ],
         ),

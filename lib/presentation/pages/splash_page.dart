@@ -5,15 +5,18 @@ import '../../core/utils/app_text_style.dart';
 import 'onboarding_page.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({super.key}) ;
+  final String? firebaseInitializationError;
+  const SplashPage({super.key, this.firebaseInitializationError});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  
+  Timer? _navigationTimer;
+
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _bowlScaleAnimation;
@@ -35,15 +38,13 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
       ),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+          ),
+        );
 
     _bowlScaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(
@@ -58,17 +59,20 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         curve: const Interval(0.4, 0.85, curve: Curves.elasticOut),
       ),
     );
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      if(mounted) {
-            _controller.forward();
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.forward();
       }
     });
 
-    Timer(const Duration(seconds: 3), () {
+    _navigationTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const OnboardingPage()),
+          MaterialPageRoute(
+            builder: (context) => OnboardingPage(
+              firebaseInitializationError: widget.firebaseInitializationError,
+            ),
+          ),
         );
       }
     });
@@ -76,6 +80,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -94,11 +99,11 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(),
-                  
+
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withValues(alpha : 0.08),
+                      color: AppColors.primaryGreen.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(40),
                     ),
                     child: SizedBox(
@@ -110,19 +115,19 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                           ScaleTransition(
                             scale: _bowlScaleAnimation,
                             child: Image.asset(
-                              'assets/salad.png', 
+                              'assets/salad.png',
                               width: 90,
                               height: 90,
                               fit: BoxFit.contain,
                             ),
                           ),
                           Positioned(
-                            top: 11 ,
+                            top: 11,
                             child: ScaleTransition(
                               scale: _sproutScaleAnimation,
-                              alignment: Alignment.bottomCenter, 
+                              alignment: Alignment.bottomCenter,
                               child: Image.asset(
-                                'assets/sprout.png', 
+                                'assets/sprout.png',
                                 width: 55,
                                 height: 50,
                                 fit: BoxFit.contain,
@@ -133,30 +138,27 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
-                  const Text(
-                    'NutriMate',
-                    style: AppTextStyles.titleBold,
-                  ),
-                  
+
+                  const Text('NutriMate', style: AppTextStyles.titleBold),
+
                   const SizedBox(height: 16),
-                  
+
                   const Text(
                     'Eat smart. Plan better.',
                     style: AppTextStyles.subTitle,
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   Text(
                     'A little nourishment. A better every day.',
                     style: AppTextStyles.subTitle.copyWith(fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const Spacer(),
                 ],
               ),

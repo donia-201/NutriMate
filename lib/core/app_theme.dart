@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-
   static const Color primaryGreen = Color(0xFF7BA88C);
   static const Color buttonGreen = Color(0xFF7C9079);
   static const Color background = Color(0xFFF6ECDC);
@@ -20,39 +19,45 @@ class AppColors {
   static const Color white = Colors.white;
   static const Color border = Color(0xFFCFC9B8);
 
-
-
   // ---------- Dark ----------
-  static const Color darkBackground = Color(0xFF1E1F18); // background/cream (dark)
-  static const Color darkSurface    = Color(0xFF303229); // surface/white (dark)
-  static const Color darkElevated   = Color(0xFF33332B); // surface-elevated
-  static const Color darkTextPrimary   = Color(0xFFF6EDDC);
+  static const Color darkBackground = Color(
+    0xFF1E1F18,
+  ); // background/cream (dark)
+  static const Color darkSurface = Color(0xFF303229); // surface/white (dark)
+  static const Color darkElevated = Color(0xFF33332B); // surface-elevated
+  static const Color darkTextPrimary = Color(0xFFF6EDDC);
   static const Color darkTextSecondary = Color(0xFFC9C4B0);
-  static const Color darkAccent     = Color(0xFF9DB5A0); // accent-primary
-  static const Color darkTextOnAccent  = Color(0xFF1C1B18);
+  static const Color darkAccent = Color(0xFF9DB5A0); // accent-primary
+  static const Color darkTextOnAccent = Color(0xFF1C1B18);
   static const Color darkBorder = Color(0xFF3D3F33);
 
-// ---------- Favorite heart ----------
+  // ---------- Favorite heart ----------
   static const Color heart = Color(0xFFC9A27A);
 }
 
 class AppTheme {
-  static const TextStyle titleBold= TextStyle(
-    fontSize:28,
+  static const double smallRadius = 12;
+  static const double cardRadius = 24;
+  static const double sheetRadius = 24;
+  static const double gridGap = 12;
+  static const double pagePadding = 20;
+  static const double gridUnit = 8;
+
+  static const TextStyle titleBold = TextStyle(
+    fontSize: 20,
     fontWeight: FontWeight.bold,
     height: 1.2,
   );
-  static const TextStyle subTitle= TextStyle(
-    fontSize:15,
+  static const TextStyle subTitle = TextStyle(
+    fontSize: 15,
     fontWeight: FontWeight.w400,
     height: 1.2,
   );
-  static const TextStyle buttonText= TextStyle(
-    fontSize:16,
+  static const TextStyle buttonText = TextStyle(
+    fontSize: 16,
     fontWeight: FontWeight.bold,
-
   );
-  static const TextStyle skipText= TextStyle(
+  static const TextStyle skipText = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
   );
@@ -76,7 +81,9 @@ class AppTheme {
   static OutlineInputBorder _border([Color? color, double width = 1]) =>
       OutlineInputBorder(
         borderRadius: _radius,
-        borderSide: color == null ? BorderSide.none : BorderSide(color: color, width: width),
+        borderSide: color == null
+            ? BorderSide.none
+            : BorderSide(color: color, width: width),
       );
 
   static ButtonStyle outlined(ColorScheme c) => OutlinedButton.styleFrom(
@@ -101,6 +108,14 @@ class AppTheme {
       error: AppColors.error,
     ),
     textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+    listTileTheme: ListTileThemeData(
+      tileColor: AppColors.darkSurface,
+      textColor: AppColors.darkTextPrimary,
+      iconColor: AppColors.darkTextSecondary,
+      selectedTileColor: AppColors.darkAccent.withValues(alpha: 0.16),
+      selectedColor: AppColors.darkAccent,
+      shape: _shape,
+    ),
     cardTheme: CardThemeData(
       color: AppColors.darkSurface,
       elevation: 0,
@@ -126,26 +141,36 @@ class AppTheme {
         shape: _shape,
         textStyle: skipText,
       ),
-
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: outlined(const ColorScheme.dark(
-        surface: AppColors.darkSurface,
-        onSurface: AppColors.darkTextPrimary,
-        outline: AppColors.darkBorder,
-      )),
+      style: outlined(
+        const ColorScheme.dark(
+          surface: AppColors.darkSurface,
+          onSurface: AppColors.darkTextPrimary,
+          outline: AppColors.darkBorder,
+        ),
+      ),
     ),
   );
 
   static ThemeData get light => ThemeData(
     scaffoldBackgroundColor: AppColors.background,
-    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen).copyWith(
-      surface: AppColors.surface,
-      onSurface: AppColors.textDark,
-      onSurfaceVariant: AppColors.textMuted,
-      outline: AppColors.border,
-    ),
+    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen)
+        .copyWith(
+          surface: AppColors.surface,
+          onSurface: AppColors.textDark,
+          onSurfaceVariant: AppColors.textMuted,
+          outline: AppColors.border,
+        ),
     textTheme: GoogleFonts.poppinsTextTheme(),
+    listTileTheme: ListTileThemeData(
+      tileColor: AppColors.surface,
+      textColor: AppColors.textDark,
+      iconColor: AppColors.textMuted,
+      selectedTileColor: AppColors.primaryGreen.withValues(alpha: 0.12),
+      selectedColor: AppColors.primaryGreen,
+      shape: _shape,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.white,
@@ -171,7 +196,8 @@ class AppTheme {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: outlined(ColorScheme.fromSeed(seedColor: AppColors.primaryGreen)),
-    ),  );
+    ),
+  );
 
   static ThemeData authTheme(ThemeData base) => base.copyWith(
     colorScheme: base.colorScheme.copyWith(

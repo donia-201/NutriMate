@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "991335309583-sdh8qv5dova50nl7kuvd0arlmhe4osg9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nutrimate",
+            "certificate_hash": "52b3cf7af15c52dd861c1e57a82d5a30aa8eee12"
+          }
+        },
+        {
           "client_id": "991335309583-34a8k9985majjtmjp5fqged6jcrojdv4.apps.googleusercontent.com",
           "client_type": 3
         }
