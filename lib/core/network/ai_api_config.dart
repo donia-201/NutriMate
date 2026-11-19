@@ -4,7 +4,7 @@ class AiApiConfig {
 
   static const String _configuredBaseUrl = String.fromEnvironment(
     'AI_API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://nutrimate-production.up.railway.app/',
   );
 
   static String get baseUrl {

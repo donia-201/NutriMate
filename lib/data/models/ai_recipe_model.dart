@@ -29,7 +29,7 @@ class AiRecipeModel {
       imageUrl: (json['imageUrl'] ?? json['strMealThumb'])?.toString(),
       category: (json['category'] ?? json['strCategory'])?.toString(),
       area: (json['area'] ?? json['strArea'])?.toString(),
-      description: json['description']?.toString(),
+      description: (json['description'] ?? json['strInstructions'])?.toString(),
       nutrition: nutritionJson is Map<String, dynamic>
           ? NutritionSummary.fromJson(nutritionJson)
           : null,

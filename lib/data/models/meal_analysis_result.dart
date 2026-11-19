@@ -18,7 +18,7 @@ class MealAnalysisResult {
   });
 
   factory MealAnalysisResult.fromJson(Map<String, dynamic> json) {
-    final nutritionJson = json['nutrition'];
+    final nutritionJson = json['nutrition'] ?? json['nutritionSummary'];
 
     final alternativesJson = json['alternatives'];
     final tipsJson = json['tips'];
@@ -29,7 +29,7 @@ class MealAnalysisResult {
             ? Map<String, dynamic>.from(nutritionJson)
             : <String, dynamic>{},
       ),
-      balanceScore: _parseScore(json['balanceScore']),
+      balanceScore: _parseScore(json['balanceScore'] ?? json['score']),
       assessment: (json['assessment'] ?? '').toString(),
       tips: tipsJson is List
           ? tipsJson.map((item) => item.toString()).toList()

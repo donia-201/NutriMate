@@ -9,7 +9,7 @@ class DioClient {
       BaseOptions(
         baseUrl: baseUrl ?? 'https://www.themealdb.com/api/json/v1/1/',
         connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 45),
         sendTimeout: const Duration(seconds: 15),
         responseType: ResponseType.json,
         headers: {
@@ -49,6 +49,8 @@ class DioClient {
   }
 
   Dio get dio => _dio;
+
+  String get baseUrl => _dio.options.baseUrl;
 
   Future<Response<T>> get<T>(
     String path, {

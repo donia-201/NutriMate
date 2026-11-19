@@ -10,10 +10,12 @@ class MealAnalysisRequest {
   });
 
   Map<String, dynamic> toJson() {
+    final additional = additionalRequest?.trim();
     return {
       'mealDescription': mealDescription.trim(),
       'dietaryPreferences': dietaryPreferences,
-      'additionalRequest': additionalRequest?.trim(),
+      if (additional != null && additional.isNotEmpty)
+        'additionalRequest': additional,
     };
   }
 }

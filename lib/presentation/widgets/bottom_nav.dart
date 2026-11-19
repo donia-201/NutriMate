@@ -1,14 +1,14 @@
  import 'package:flutter/material.dart';
-
-import '../../core/utils/app_colors.dart';
-import '../pages/ai_assistant_page.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/network/ai_api_config.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/utils/app_colors.dart';
 import '../../data/dataresource/ai_remote_darasource.dart';
+import '../../data/dataresource/meal_api_services.dart';
 import '../../data/repositories/ai_repository.dart';
 import '../cubit/ai_chat_cubit.dart';
+import '../pages/ai_assistant_page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -39,31 +39,38 @@ class BottomNavBar extends StatelessWidget {
         break;
 
       case 2:
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => BlocProvider(
-        create: (_) {
-          final dioClient = DioClient();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (_) {
+                // AI requests use a dedicated backend client.
+                // MealApiService keeps its own TheMealDB client.
+                final aiDioClient = DioClient(
+                  baseUrl: AiApiConfig.baseUrl.isEmpty
+                      ? 'https://invalid.invalid/'
+                      : AiApiConfig.baseUrl,
+                );
+                final mealApiService = MealApiService();
 
-          final dataSource = AiRemoteDataSource(
-            dioClient: dioClient,
-            useMockData: true,
-          );
+                final dataSource = AiRemoteDataSource(
+                  aiDioClient: aiDioClient,
+                  mealApiService: mealApiService,
+                );
 
-          final repository = AiRepository(
-            dataSource: dataSource,
-          );
+                final repository = AiRepository(
+                  dataSource: dataSource,
+                );
 
-          return AiChatCubit(
-            repository: repository,
-          );
-        },
-        child: const AiAssistantPage(),
-      ),
-    ),
-  );
-  break;
+                return AiChatCubit(
+                  repository: repository,
+                );
+              },
+              child: const AiAssistantPage(),
+            ),
+          ),
+        );
+        break;
 
       case 3:
         // Navigator.push(

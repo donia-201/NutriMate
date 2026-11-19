@@ -7,8 +7,8 @@ class AiRepository {
   final AiRemoteDataSource _dataSource;
 
   AiRepository({
-    required AiRemoteDataSource dataSource,
-  }) : _dataSource = dataSource;
+    required this._dataSource,
+  }) ;
 
   Future<MealAnalysisResult> analyzeMeal(
     MealAnalysisRequest request,
