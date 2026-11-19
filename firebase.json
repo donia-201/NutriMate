@@ -1,0 +1,22 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "nutrimate-26943",
+          "appId": "1:991335309583:android:5935fccea6ac5bfc725e7a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "nutrimate-26943",
+          "configurations": {
+            "android": "1:991335309583:android:5935fccea6ac5bfc725e7a",
+            "ios": "1:991335309583:ios:ffed8de214eed1cf725e7a"
+          }
+        }
+      }
+    }
+  }
+}
