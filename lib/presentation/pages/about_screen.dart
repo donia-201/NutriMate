@@ -49,7 +49,7 @@ class AboutScreen extends StatelessWidget {
                 style: AppTheme.body.copyWith(color: c.onSurface),
               ),
               const Divider(height: 28),
-              _InfoRow(Icons.code, 'Developer', 'Your name here'),
+              _InfoRow(Icons.code, 'Developer', ''),
               const SizedBox(height: 12),
               _InfoRow(Icons.info_outline, 'Version', '1.0.0'),
               const SizedBox(height: 16),
