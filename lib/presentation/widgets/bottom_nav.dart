@@ -106,8 +106,8 @@ class BottomNavBar extends StatelessWidget {
             _buildNavItem(
               context,
               4,
-              Icons.add_chart_rounded,
-              Icons.bar_chart_outlined,
+              Icons.person_outline,
+              Icons.person,
               "Profile",
             ),
           ],
