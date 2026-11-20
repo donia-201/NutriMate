@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_assets.dart';
 import '../../core/utils/app_text_style.dart';
@@ -8,8 +9,7 @@ import '../../presentation/pages/auth_gate.dart';
 import '../cubit/profile_cubit.dart';
 
 class OnboardingPage extends StatefulWidget {
-  final String? firebaseInitializationError;
-  const OnboardingPage({super.key, this.firebaseInitializationError});
+  const OnboardingPage({super.key});
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
@@ -49,9 +49,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => AuthGate(
-          firebaseInitializationError: widget.firebaseInitializationError,
-        ),
+        builder: (_) => const AuthGate(),
       ),
     );
   }
@@ -81,7 +79,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
               child: Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -108,26 +109,39 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 },
                 itemBuilder: (context, index) {
                   final item = _items[index];
+
                   return AnimatedBuilder(
                     animation: _pageController,
                     builder: (context, child) {
                       double parallaxFactor = 0.0;
+
                       if (_pageController.position.haveDimensions) {
-                        parallaxFactor = _pageController.page! - index;
+                        parallaxFactor =
+                            _pageController.page! - index;
                       }
+
                       return SingleChildScrollView(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          padding:
+                          const EdgeInsets.symmetric(
+                            horizontal: 24,
+                          ),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
                             children: [
                               Transform.translate(
-                                offset: Offset(parallaxFactor * 40, 0),
+                                offset: Offset(
+                                  parallaxFactor * 40,
+                                  0,
+                                ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius:
+                                  BorderRadius.circular(28),
                                   child: Image.asset(
                                     item.image,
-                                    height: size.height * 0.42,
+                                    height:
+                                    size.height * 0.42,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
                                   ),
@@ -139,7 +153,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               Text(
                                 item.title,
                                 textAlign: TextAlign.center,
-                                style: AppTextStyles.titleBold.copyWith(
+                                style:
+                                AppTextStyles.titleBold
+                                    .copyWith(
                                   fontSize: 24,
                                   height: 1.3,
                                 ),
@@ -150,7 +166,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               Text(
                                 item.description,
                                 textAlign: TextAlign.center,
-                                style: AppTextStyles.subTitle.copyWith(
+                                style:
+                                AppTextStyles.subTitle
+                                    .copyWith(
                                   fontSize: 14,
                                   height: 1.5,
                                 ),
@@ -168,21 +186,31 @@ class _OnboardingPageState extends State<OnboardingPage> {
             const SizedBox(height: 32),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment:
+                MainAxisAlignment.center,
                 children: List.generate(
                   _items.length,
                       (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    duration:
+                    const Duration(milliseconds: 300),
+                    margin:
+                    const EdgeInsets.symmetric(
+                      horizontal: 6,
+                    ),
                     height: 8,
-                    width: _currentIndex == index ? 28 : 8,
+                    width:
+                    _currentIndex == index
+                        ? 28
+                        : 8,
                     decoration: BoxDecoration(
                       color: _currentIndex == index
                           ? AppColors.primaryGreen
                           : AppColors.dotInactive,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius:
+                      BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -192,25 +220,42 @@ class _OnboardingPageState extends State<OnboardingPage> {
             const SizedBox(height: 32),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 20,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: _onNextPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
+                  style:
+                  ElevatedButton.styleFrom(
+                    backgroundColor:
+                    AppColors.primaryGreen,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    shape:
+                    RoundedRectangleBorder(
+                      borderRadius:
+                      BorderRadius.circular(16),
                     ),
-                    overlayColor: Colors.black.withValues(alpha: 0.1),
+                    overlayColor:
+                    Colors.black.withValues(
+                      alpha: 0.1,
+                    ),
                   ),
                   child: Text(
-                    _currentIndex == _items.length - 1 ? 'Get Started' : 'Next',
-                    style: AppTextStyles.buttonText.copyWith(
+                    _currentIndex ==
+                        _items.length - 1
+                        ? 'Get Started'
+                        : 'Next',
+                    style:
+                    AppTextStyles.buttonText
+                        .copyWith(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                      FontWeight.w600,
                     ),
                   ),
                 ),
