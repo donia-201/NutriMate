@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart'hide EmailAuthProvider;
+import 'package:firebase_auth/firebase_auth.dart' hide EmailAuthProvider;
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nutri_mate/presentation/pages/home_page.dart';
@@ -7,9 +7,16 @@ import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 
 import 'package:nutri_mate/core/app_widgets.dart';
 import 'package:nutri_mate/core/app_config.dart';
+import 'package:nutri_mate/core/guest_guard.dart';
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key, this.auth, this.homeBuilder, this.signInBuilder,this.firebaseInitializationError,});
+  const AuthGate({
+    super.key,
+    this.auth,
+    this.homeBuilder,
+    this.signInBuilder,
+    this.firebaseInitializationError,
+  });
 
   final FirebaseAuth? auth;
   final WidgetBuilder? homeBuilder;
@@ -20,7 +27,7 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (firebaseInitializationError != null) {   // جديد
+    if (firebaseInitializationError != null) {
       return Scaffold(
         body: SafeArea(
           child: Center(
@@ -39,94 +46,94 @@ class AuthGate extends StatelessWidget {
     final firebaseAuth = auth ?? FirebaseAuth.instance;
 
     return StreamBuilder<User?>(
-        stream: firebaseAuth.authStateChanges(),
-        builder:(context, snapshot){
-          if( snapshot.hasError){
-            return Scaffold(
-                body:SafeArea(
-                  child: Center(
-                    child:Text('Small choices. Lasting nourishment.',
-                        style: AppTheme.subTitle),
-                  ),
-                )
-            );}
-          if(snapshot.connectionState == ConnectionState.waiting){
-            return Scaffold(
-                body:SafeArea(
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-            );
-          }
-          if(snapshot.hasData==false){
-            if (signInBuilder != null) return signInBuilder!(context);
-
-
-            return Theme(
-              data: AppTheme.authTheme(Theme.of(context)),
-              child: SignInScreen(
-
-                providers: [EmailAuthProvider(),
-
-                ],
-
-                oauthButtonVariant: OAuthButtonVariant.icon,
-
-                subtitleBuilder: (context, authAction) {
-                  final isSignIn = authAction == AuthAction.signIn;
-
-                  return Padding(
-                    padding: const EdgeInsets.only( bottom: 30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isSignIn ? 'Welcome back' : 'Create your account',
-                          style: AppTheme.titleBold,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Small choices. Lasting nourishment.',
-                          style: AppTheme.subTitle,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-
-                footerBuilder: (context, _) => Column(
-                  children: [
-                    const Text(
-                      'or continue with',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.subTitle,
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      child: OAuthProviderButton(
-                        provider: GoogleProvider(clientId: AppConfig.googleClientId),
-                        variant: OAuthButtonVariant.icon,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _GuestButton(auth: firebaseAuth),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'You can explore recipes as a guest, but favorites and synced data require an account.',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.small,
-                    ),
-                  ],
-                ),
+      stream: firebaseAuth.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: SafeArea(
+              child: Center(
+                child: Text('Small choices. Lasting nourishment.',
+                    style: AppTheme.subTitle),
               ),
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: SafeArea(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (snapshot.hasData == false) {
+          if (signInBuilder != null) return signInBuilder!(context);
 
+          // نفس العنوان ونفس الفوتر للشاشتين
+          Widget subtitle(BuildContext context, AuthAction authAction) {
+            final isSignIn = authAction == AuthAction.signIn;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isSignIn ? 'Welcome back' : 'Create your account',
+                    style: AppTheme.titleBold,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Small choices. Lasting nourishment.',
+                    style: AppTheme.subTitle,
+                  ),
+                ],
+              ),
             );
-
           }
-          return homeBuilder?.call(context) ?? const HomePage();
+
+          Widget footer(BuildContext context, AuthAction authAction) => Column(
+            children: [
+              const Text(
+                'or continue with',
+                textAlign: TextAlign.center,
+                style: AppTheme.subTitle,
+              ),
+              const SizedBox(height: 16),
+              OAuthProviderButton(
+                provider: GoogleProvider(clientId: AppConfig.googleClientId),
+                variant: OAuthButtonVariant.icon,
+              ),
+              const SizedBox(height: 16),
+              _GuestButton(auth: firebaseAuth),
+              const SizedBox(height: 16),
+              const Text(
+                'You can explore recipes as a guest, but favorites and synced data require an account.',
+                textAlign: TextAlign.center,
+                style: AppTheme.small,
+              ),
+            ],
+          );
+
+          return Theme(
+            data: AppTheme.authTheme(Theme.of(context)),
+            child: openRegisterFirst
+                ? RegisterScreen(
+              providers: [EmailAuthProvider()],
+              oauthButtonVariant: OAuthButtonVariant.icon,
+              subtitleBuilder: subtitle,
+              footerBuilder: footer,
+            )
+                : SignInScreen(
+              providers: [EmailAuthProvider()],
+              oauthButtonVariant: OAuthButtonVariant.icon,
+              subtitleBuilder: subtitle,
+              footerBuilder: footer,
+            ),
+          );
         }
 
+        openRegisterFirst = false;
+        return homeBuilder?.call(context) ?? const HomePage();
+      },
     );
   }
 }
