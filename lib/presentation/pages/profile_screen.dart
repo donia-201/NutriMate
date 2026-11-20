@@ -6,6 +6,7 @@ import 'package:nutri_mate/core/app_widgets.dart';
 import 'package:nutri_mate/presentation/cubit/profile_cubit.dart';
 import 'package:nutri_mate/presentation/pages/edit_profile_screen.dart';
 import 'package:nutri_mate/presentation/pages/about_screen.dart';
+import 'package:nutri_mate/presentation/pages/planner_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -87,7 +88,11 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(children: [
               _MenuTile(Icons.favorite_border, 'Favorite Meals', () => _soon(context)),
-              _MenuTile(Icons.calendar_today_outlined, 'Planned Meals', () => _soon(context)),
+              _MenuTile(Icons.calendar_today_outlined, 'Planned Meals', () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => PlannerPage()),
+              ),
+              ),
               _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
               SwitchListTile(
                 secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),

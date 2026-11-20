@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../core/utils/app_colors.dart';
 import '../../data/dataresource/local_database_service.dart';
 import '../../data/models/ai_recipe_model.dart';
 import '../../data/models/healthy_alternative.dart';
@@ -38,11 +37,12 @@ class AiAssistantPage extends StatefulWidget {
 }
 
 class _AiAssistantPageState extends State<AiAssistantPage> {
-  static const Color _inputColor = Color(0xFFEFE2CD);
+  // Shortcut to the current theme colors (works in Light and Dark).
+  ColorScheme get _c => Theme.of(context).colorScheme;
 
   final TextEditingController _mealController = TextEditingController();
   final TextEditingController _additionalRequestController =
-      TextEditingController();
+  TextEditingController();
 
   AiAssistantMode _selectedMode = AiAssistantMode.mealAnalysis;
   Set<String> _selectedPreferences = {};
@@ -99,7 +99,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
       case AiChatStatus.initial:
       case AiChatStatus.failure:
-        // A failed "healthier recipes" request keeps the analysis on screen.
+      // A failed "healthier recipes" request keeps the analysis on screen.
         return _cameFromAnalysis && _lastAnalysis != null
             ? _AiView.analysis
             : _AiView.input;
@@ -203,7 +203,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       mealDescription: meal,
       dietaryPreferences: _selectedPreferences.toList(),
       additionalRequest:
-          _isMealAnalysis ? null : _additionalRequestController.text.trim(),
+      _isMealAnalysis ? null : _additionalRequestController.text.trim(),
     );
 
     setState(() {
@@ -374,7 +374,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             if (!didPop) _goBack(view);
           },
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            // Background comes from the Theme (Light / Dark).
             appBar: _buildAppBar(view, state),
             body: SafeArea(
               top: false,
@@ -388,14 +388,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   PreferredSizeWidget _buildAppBar(_AiView view, AiChatState state) {
     return AppBar(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_back_ios_new,
           size: 19,
-          color: AppColors.textDark,
+          color: _c.onSurface,
         ),
         onPressed: () => _goBack(view),
       ),
@@ -404,17 +404,17 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         children: [
           Text(
             _titleFor(view, state),
-            style: const TextStyle(
-              color: AppColors.textDark,
+            style: TextStyle(
+              color: _c.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
           if (view == _AiView.input)
-            const Text(
+            Text(
               'A little clarity with every bite',
               style: TextStyle(
-                color: AppColors.textMuted,
+                color: _c.onSurfaceVariant,
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
               ),
@@ -457,21 +457,21 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                   title: 'Hi there, what’s on your plate?',
                   message: _isMealAnalysis
                       ? 'Describe a meal and I’ll estimate its nutrition, '
-                          'then suggest practical swaps.'
+                      'then suggest practical swaps.'
                       : 'Tell me a food you love. We’ll find a nourishing '
-                          'alternative without losing the joy.',
+                      'alternative without losing the joy.',
                 ),
                 if (state.status == AiChatStatus.failure) ...[
                   const SizedBox(height: 14),
                   _buildErrorMessage(state.errorMessage),
                 ],
                 const SizedBox(height: 22),
-                const Text(
+                Text(
                   'Dietary preferences',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: _c.onSurface,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -503,9 +503,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                   ? 'Estimates only. Check ingredients for allergy safety.'
                   : 'Suggestions consider your food and dietary preferences.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textMuted,
+                color: _c.onSurfaceVariant,
               ),
             ),
           ],
@@ -518,7 +518,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: _inputColor,
+        color: _c.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(22),
       ),
       child: TextField(
@@ -526,15 +526,19 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         minLines: 1,
         maxLines: 4,
         textCapitalization: TextCapitalization.sentences,
+        style: TextStyle(color: _c.onSurface),
         decoration: InputDecoration(
           hintText: _isMealAnalysis
               ? 'Describe your meal...'
               : 'Tell me a food you love...',
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontSize: 13.5,
-            color: AppColors.textHint,
+            color: _c.onSurfaceVariant,
           ),
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          fillColor: Colors.transparent,
         ),
       ),
     );
@@ -569,22 +573,22 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE9DEC9) : AppColors.surface,
+            color: selected ? _c.primary.withValues(alpha: 0.18) : _c.surface,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: selected
-                  ? AppColors.accentHeart.withValues(alpha: 0.5)
-                  : AppColors.divider,
+                  ? _c.primary.withValues(alpha: 0.6)
+                  : _c.outline.withValues(alpha: 0.4),
             ),
           ),
           alignment: Alignment.center,
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
+              color: _c.onSurface,
             ),
           ),
         ),
@@ -596,12 +600,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Anything specific? (optional)',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
+            color: _c.onSurface,
           ),
         ),
         const SizedBox(height: 10),
@@ -609,12 +613,13 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           controller: _additionalRequestController,
           minLines: 2,
           maxLines: 3,
+          style: TextStyle(color: _c.onSurface),
           decoration: InputDecoration(
             hintText: 'e.g. high protein, ready in 20 minutes...',
             filled: true,
-            fillColor: AppColors.surface,
-            hintStyle: const TextStyle(
-              color: AppColors.textHint,
+            fillColor: _c.surface,
+            hintStyle: TextStyle(
+              color: _c.onSurfaceVariant,
               fontSize: 12,
             ),
             contentPadding: const EdgeInsets.all(15),
@@ -633,13 +638,13 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
+        color: _c.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         message ?? 'Something went wrong.',
-        style: const TextStyle(
-          color: AppColors.error,
+        style: TextStyle(
+          color: _c.error,
           fontSize: 13,
         ),
       ),
@@ -713,10 +718,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                 const SizedBox(height: 14),
                 Text(
                   result.nutrition.disclaimer!.trim(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     height: 1.4,
-                    color: AppColors.textMuted,
+                    color: _c.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -731,12 +736,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             ),
             TextButton(
               onPressed: _resetToInput,
-              child: const Text(
+              child: Text(
                 'Analyze another meal',
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+                  color: _c.onSurfaceVariant,
                 ),
               ),
             ),
@@ -755,7 +760,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     final summary = count == 0
         ? ''
         : '${_cameFromAnalysis ? 'Your meal analysis · ' : ''}'
-            '$count healthier ${count == 1 ? 'recipe' : 'recipes'}';
+        '$count healthier ${count == 1 ? 'recipe' : 'recipes'}';
 
     return _buildScrollableChat(
       children: [
@@ -769,10 +774,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         else ...[
           Text(
             summary,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
+              color: _c.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 12),
@@ -782,12 +787,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         Center(
           child: TextButton(
             onPressed: _resetToInput,
-            child: const Text(
+            child: Text(
               'Start over',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
+                color: _c.onSurfaceVariant,
               ),
             ),
           ),
@@ -810,16 +815,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _c.surface,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: const Text(
+      child: Text(
         'No verified recipe alternatives were found. '
-        'Try adjusting your meal description or dietary preferences.',
+            'Try adjusting your meal description or dietary preferences.',
         style: TextStyle(
           fontSize: 13,
           height: 1.5,
-          color: AppColors.textMuted,
+          color: _c.onSurfaceVariant,
         ),
       ),
     );
@@ -849,10 +854,13 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
-          top: BorderSide(color: AppColors.divider, width: 0.8),
+          top: BorderSide(
+            color: _c.outline.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
         ),
       ),
       child: Column(
@@ -872,11 +880,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryGreen,
-          foregroundColor: AppColors.buttonText,
-          disabledBackgroundColor:
-              AppColors.primaryGreen.withValues(alpha: 0.5),
-          disabledForegroundColor: Colors.white,
+          backgroundColor: _c.primary,
+          foregroundColor: _c.onPrimary,
+          disabledBackgroundColor: _c.primary.withValues(alpha: 0.5),
+          disabledForegroundColor: _c.onPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -887,12 +894,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (showSpinner) ...[
-              const SizedBox(
+              SizedBox(
                 height: 16,
                 width: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: _c.onPrimary,
                 ),
               ),
               const SizedBox(width: 10),

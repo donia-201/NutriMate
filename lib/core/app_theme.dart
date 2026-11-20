@@ -18,6 +18,7 @@ class AppColors {
   static const Color warning = Color(0xFFFFA500);
   static const Color white = Colors.white;
   static const Color border = Color(0xFFCFC9B8);
+  static const Color inputBeige = Color(0xFFEFE2CD); // جديد: لون حقل الكتابة في الـ Light
 
   // ---------- Dark ----------
   static const Color darkBackground = Color(
@@ -106,6 +107,7 @@ class AppTheme {
       onSurfaceVariant: AppColors.darkTextSecondary,
       outline: AppColors.darkBorder,
       error: AppColors.error,
+      surfaceContainerHighest: AppColors.darkElevated, // جديد
     ),
     textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
     listTileTheme: ListTileThemeData(
@@ -157,11 +159,14 @@ class AppTheme {
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen)
         .copyWith(
-          surface: AppColors.surface,
-          onSurface: AppColors.textDark,
-          onSurfaceVariant: AppColors.textMuted,
-          outline: AppColors.border,
-        ),
+      primary: AppColors.primaryGreen, // جديد
+      onPrimary: AppColors.buttonText, // جديد
+      surface: AppColors.surface,
+      onSurface: AppColors.textDark,
+      onSurfaceVariant: AppColors.textMuted,
+      outline: AppColors.border,
+      surfaceContainerHighest: AppColors.inputBeige, // جديد
+    ),
     textTheme: GoogleFonts.poppinsTextTheme(),
     listTileTheme: ListTileThemeData(
       tileColor: AppColors.surface,
