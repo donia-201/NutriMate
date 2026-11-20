@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../core/app_theme.dart' hide AppColors;
 import '../../core/utils/app_colors.dart';
 import '../../data/models/meal_model.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
+import '../cubit/planner_cubit.dart';
+import '../cubit/profile_cubit.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
-import '../cubit/planner_cubit.dart';
 import '../widgets/bottom_nav.dart';
+//import 'insights_page.dart';
 import 'planner_page.dart';
-import 'search_page.dart';
 import 'profile_screen.dart';
-import '../cubit/profile_cubit.dart';
+import 'search_page.dart';
 
 class HomePage extends StatelessWidget {
   final String userName;
@@ -48,6 +50,11 @@ class _HomeViewState extends State<_HomeView> {
     super.dispose();
   }
 
+  void _openProfile() => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+  );
+
   void _openSearch({String? query}) {
     _homeSearchFocusNode.unfocus();
     final searchCubit = context.read<SearchCubit>();
@@ -64,18 +71,18 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Widget _homeSearchBox() {
-    final colorScheme = Theme.of(context).colorScheme;
+    final c = Theme.of(context).colorScheme;
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.gridUnit * 2),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.38)),
+        border: Border.all(color: c.outline.withValues(alpha: 0.38)),
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: colorScheme.onSurface, size: 22),
+          Icon(Icons.search, color: c.onSurface, size: 22),
           const SizedBox(width: AppTheme.gridUnit),
           Expanded(
             child: TextField(
@@ -84,11 +91,11 @@ class _HomeViewState extends State<_HomeView> {
               textInputAction: TextInputAction.search,
               onTap: () => _openSearch(),
               onSubmitted: (value) => _openSearch(query: value),
-              style: AppTheme.body.copyWith(color: colorScheme.onSurface),
+              style: AppTheme.body.copyWith(color: c.onSurface),
               decoration: InputDecoration(
                 hintText: 'Search recipes, cuisines, ingredients',
                 hintStyle: AppTheme.body.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: c.onSurfaceVariant,
                   fontSize: 13.5,
                 ),
                 border: InputBorder.none,
@@ -102,7 +109,7 @@ class _HomeViewState extends State<_HomeView> {
           IconButton(
             tooltip: 'Search filters',
             onPressed: () => _openSearch(),
-            icon: Icon(Icons.tune, color: colorScheme.onSurface, size: 20),
+            icon: Icon(Icons.tune, color: c.onSurface, size: 20),
           ),
         ],
       ),
@@ -112,6 +119,7 @@ class _HomeViewState extends State<_HomeView> {
   @override
   Widget build(BuildContext context) => BlocBuilder<HomeCubit, HomeState>(
     builder: (context, state) {
+      final c = Theme.of(context).colorScheme;
       final cubit = context.read<HomeCubit>();
       return Scaffold(
         body: IndexedStack(
@@ -120,10 +128,8 @@ class _HomeViewState extends State<_HomeView> {
             SafeArea(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -136,19 +142,19 @@ class _HomeViewState extends State<_HomeView> {
                             BlocBuilder<ProfileCubit, ProfileState>(
                               builder: (context, profile) => Text(
                                 'Hello, ${profile.name}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textDark,
+                                  color: c.onSurface,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
+                            Text(
                               "Let's make today feel good.",
                               style: TextStyle(
                                 fontSize: 14,
-                                color: AppColors.textMuted,
+                                color: c.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -156,14 +162,18 @@ class _HomeViewState extends State<_HomeView> {
                         Container(
                           width: 40,
                           height: 40,
-                          decoration: const BoxDecoration(
-                            color: AppColors.surface,
+                          decoration: BoxDecoration(
+                            color: c.surface,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.person_outline,
-                            color: AppColors.textDark,
-                            size: 22,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: _openProfile,
+                            icon: Icon(
+                              Icons.person_outline,
+                              color: c.onSurface,
+                              size: 22,
+                            ),
                           ),
                         ),
                       ],
@@ -173,12 +183,12 @@ class _HomeViewState extends State<_HomeView> {
                     const SizedBox(height: 14),
                     if (!state.isOnline) _offlineNotice(state, cubit),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Meal of the Day',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
+                        color: c.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -186,13 +196,11 @@ class _HomeViewState extends State<_HomeView> {
                       Container(
                         height: 240,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: c.surface,
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryGreen,
-                          ),
+                        child: Center(
+                          child: CircularProgressIndicator(color: c.primary),
                         ),
                       )
                     else if (state.mealOfDay != null)
@@ -217,13 +225,13 @@ class _HomeViewState extends State<_HomeView> {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.surface,
+                              color: c.surface,
                               borderRadius: BorderRadius.circular(25),
                             ),
                             child: Text(
                               category,
-                              style: const TextStyle(
-                                color: AppColors.textDark,
+                              style: TextStyle(
+                                color: c.onSurface,
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -233,9 +241,7 @@ class _HomeViewState extends State<_HomeView> {
                             .toList(),
                       )
                     else if (state.isLoading)
-                      const LinearProgressIndicator(
-                        color: AppColors.primaryGreen,
-                      ),
+                      LinearProgressIndicator(color: c.primary),
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -243,17 +249,17 @@ class _HomeViewState extends State<_HomeView> {
                           child: ElevatedButton(
                             onPressed: () {},
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
+                              backgroundColor: c.primary,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(25),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Log a meal',
                               style: TextStyle(
-                                color: AppColors.buttonText,
+                                color: c.onPrimary,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -263,19 +269,20 @@ class _HomeViewState extends State<_HomeView> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () =>
+                                setState(() => _currentBottomNavIndex = 4),
                             style: OutlinedButton.styleFrom(
-                              backgroundColor: AppColors.surface,
+                              backgroundColor: c.surface,
                               side: BorderSide.none,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(25),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Meal Log / Insights',
                               style: TextStyle(
-                                color: AppColors.textDark,
+                                color: c.onSurface,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13.5,
                               ),
@@ -285,37 +292,34 @@ class _HomeViewState extends State<_HomeView> {
                       ],
                     ),
                     const SizedBox(height: 32),
-                    const Text(
+                    Text(
                       'For your everyday',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
+                        color: c.onSurface,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Home feed • scroll continuation',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
+                      style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
                     ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
+                      children: [
                         Text(
                           'Popular Recipes',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
+                            color: c.onSurface,
                           ),
                         ),
                         Text(
                           'See all',
                           style: TextStyle(
-                            color: AppColors.textMuted,
+                            color: c.onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
@@ -323,15 +327,11 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                     const SizedBox(height: 12),
                     if (state.popularMeals.isEmpty && state.isLoading)
-                      const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primaryGreen,
-                        ),
-                      )
+                      Center(child: CircularProgressIndicator(color: c.primary))
                     else if (state.popularMeals.isEmpty)
-                      const Text(
+                      Text(
                         'No cached popular recipes available.',
-                        style: TextStyle(color: AppColors.textMuted),
+                        style: TextStyle(color: c.onSurfaceVariant),
                       )
                     else
                       ...state.popularMeals.map(
@@ -345,28 +345,28 @@ class _HomeViewState extends State<_HomeView> {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Healthy Swaps',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
+                        color: c.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: c.surface,
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Try this instead',
                             style: TextStyle(
-                              color: AppColors.textMuted,
+                              color: c.onSurfaceVariant,
                               fontSize: 12,
                             ),
                           ),
@@ -385,11 +385,12 @@ class _HomeViewState extends State<_HomeView> {
                                   ),
                                 ),
                               ),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10),
+                              Padding(
+                                padding:
+                                const EdgeInsets.symmetric(horizontal: 10),
                                 child: Icon(
                                   Icons.arrow_forward,
-                                  color: AppColors.textDark,
+                                  color: c.onSurface,
                                   size: 20,
                                 ),
                               ),
@@ -408,20 +409,20 @@ class _HomeViewState extends State<_HomeView> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Chocolate Cake → Greek Yogurt Berry Bowl',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: AppColors.textDark,
+                              color: c.onSurface,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             'More protein, less added sugar. Still a sweet moment.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textMuted,
+                              color: c.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -430,19 +431,18 @@ class _HomeViewState extends State<_HomeView> {
                             child: ElevatedButton(
                               onPressed: () {},
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.background,
+                                backgroundColor: c.surfaceContainerHighest,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'View swap',
                                 style: TextStyle(
-                                  color: AppColors.textDark,
+                                  color: c.onSurface,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13.5,
                                 ),
@@ -460,7 +460,7 @@ class _HomeViewState extends State<_HomeView> {
             SearchPage(cubit: context.read<SearchCubit>(), embedded: true),
             const Scaffold(body: Center(child: Text('NutriAI'))),
             PlannerPage(cubit: context.read<PlannerCubit>(), embedded: true),
-            const ProfileScreen(),
+         //   const InsightsPage(), // مكان البروفايل القديم (index 4)
           ],
         ),
         bottomNavigationBar: BottomNavBar(
@@ -471,34 +471,38 @@ class _HomeViewState extends State<_HomeView> {
     },
   );
 
-  Widget _offlineNotice(HomeState state, HomeCubit cubit) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: AppColors.warning.withValues(alpha: .12),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.wifi_off, size: 18, color: AppColors.textMuted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            state.errorMessage ?? 'Offline mode — showing saved recipes.',
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+  Widget _offlineNotice(HomeState state, HomeCubit cubit) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off, size: 18, color: c.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              state.errorMessage ?? 'Offline mode — showing saved recipes.',
+              style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
+            ),
           ),
-        ),
-        TextButton(onPressed: cubit.refresh, child: const Text('Retry')),
-      ],
-    ),
-  );
+          TextButton(onPressed: cubit.refresh, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
 
   Widget _mealCard(MealModel meal, HomeState state, HomeCubit cubit) {
+    final c = Theme.of(context).colorScheme;
     final fav = state.favoriteIds.contains(meal.idMeal);
     final calories = state.mealNutrition?.calories;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -526,10 +530,10 @@ class _HomeViewState extends State<_HomeView> {
                         meal.strMeal,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textDark,
+                          color: c.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -537,9 +541,9 @@ class _HomeViewState extends State<_HomeView> {
                         '${meal.strCategory ?? 'Meal'} • ${meal.strArea ?? 'International'}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textMuted,
+                          color: c.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -553,28 +557,23 @@ class _HomeViewState extends State<_HomeView> {
                       calories == null
                           ? '— kcal'
                           : '${calories.toStringAsFixed(0)} kcal',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13.5,
-                        color: AppColors.textDark,
+                        color: c.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
                     IconButton(
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
+                      constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
                       padding: EdgeInsets.zero,
                       onPressed: () => cubit.toggleFavorite(meal),
-                      tooltip: fav
-                          ? 'Remove from favorites'
-                          : 'Add to favorites',
+                      tooltip:
+                      fav ? 'Remove from favorites' : 'Add to favorites',
                       icon: Icon(
                         fav ? Icons.favorite : Icons.favorite_border,
-                        color: fav
-                            ? AppColors.accentHeart
-                            : AppColors.textMuted,
+                        color: fav ? AppColors.accentHeart : c.onSurfaceVariant,
                         size: 22,
                       ),
                     ),
@@ -589,6 +588,7 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Widget _nutritionCard(HomeState state) {
+    final c = Theme.of(context).colorScheme;
     final nutrition = state.mealNutrition;
 
     String value(double? number, String unit) {
@@ -599,54 +599,48 @@ class _HomeViewState extends State<_HomeView> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Meal Nutrition',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: c.onSurface,
             ),
           ),
           const SizedBox(height: 5),
-          const Text(
+          Text(
             'Nutrition values for the whole recipe',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 11.5, color: c.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           if (state.isNutritionLoading)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(
-                  color: AppColors.primaryGreen,
-                ),
+                padding: const EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: c.primary),
               ),
             )
           else if (nutrition == null)
             Column(
               children: [
                 Text(
-                  state.nutritionError ??
-                      'Nutrition data is not available yet.',
+                  state.nutritionError ?? 'Nutrition data is not available yet.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: state.mealOfDay == null
                       ? null
-                      : () => context.read<HomeCubit>().loadMealNutrition(
-                    state.mealOfDay!,
-                  ),
+                      : () => context
+                      .read<HomeCubit>()
+                      .loadMealNutrition(state.mealOfDay!),
                   child: const Text('Retry'),
                 ),
               ],
@@ -657,161 +651,148 @@ class _HomeViewState extends State<_HomeView> {
                 children: [
                   _macroRing(value(nutrition.calories, ''), 'Calories\nkcal', true),
                   _macroRing(value(nutrition.protein, 'g'), 'Protein', false),
-                  _macroRing(
-                    value(nutrition.carbohydrates, 'g'),
-                    'Carbs',
-                    false,
-                  ),
+                  _macroRing(value(nutrition.carbohydrates, 'g'), 'Carbs', false),
                   _macroRing(value(nutrition.fat, 'g'), 'Fat', false),
                 ],
               ),
               const SizedBox(height: 14),
-              if (!nutrition.isComplete)
-                const Text(
-                  'Some ingredients or nutrients could not be calculated. '
-                      'Displayed values may be incomplete.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                )
-              else if (nutrition.isEstimated)
-                const Text(
-                  'Some ingredient quantities were estimated.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                )
-              else
-                const Text(
-                  'All available ingredient quantities were calculated.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
+              Text(
+                !nutrition.isComplete
+                    ? 'Some ingredients or nutrients could not be calculated. '
+                    'Displayed values may be incomplete.'
+                    : nutrition.isEstimated
+                    ? 'Some ingredient quantities were estimated.'
+                    : 'All available ingredient quantities were calculated.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: c.onSurfaceVariant),
+              ),
             ],
         ],
       ),
     );
   }
 
-  Widget _macroRing(String value, String label, bool primary) => Column(
-    children: [
-      Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: primary ? AppColors.accentHeart : AppColors.divider,
-            width: 3.5,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+  Widget _macroRing(String value, String label, bool primary) {
+    final c = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: primary ? AppColors.accentHeart : c.outline,
+              width: 3.5,
             ),
           ),
+          child: Center(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: c.onSurface,
+              ),
+            ),
+          ),
         ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, color: c.onSurfaceVariant, height: 1.2),
+        ),
+      ],
+    );
+  }
+
+  Widget _popularTile(MealModel meal, bool fav, VoidCallback onTap) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(20),
       ),
-      const SizedBox(height: 6),
-      Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 10,
-          color: AppColors.textMuted,
-          height: 1.2,
-        ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.network(
+              meal.strMealThumb,
+              width: 65,
+              height: 65,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _imageFallback(width: 65, height: 65),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  meal.strMeal,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: c.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Nutrition data unavailable',
+                  style: TextStyle(fontSize: 11.5, color: c.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onTap,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            icon: Icon(
+              fav ? Icons.favorite : Icons.favorite_border,
+              color: fav ? AppColors.accentHeart : c.onSurfaceVariant,
+              size: 20,
+            ),
+          ),
+        ],
       ),
-    ],
-  );
+    );
+  }
 
-  Widget _popularTile(MealModel meal, bool fav, VoidCallback onTap) =>
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                meal.strMealThumb,
-                width: 65,
-                height: 65,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    _imageFallback(width: 65, height: 65),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    meal.strMeal,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Nutrition data unavailable',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: onTap,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              icon: Icon(
-                fav ? Icons.favorite : Icons.favorite_border,
-                color: fav ? AppColors.accentHeart : AppColors.textMuted,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      );
+  Widget _emptyCard(String message) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Text(message, style: TextStyle(color: c.onSurfaceVariant)),
+    );
+  }
 
-  Widget _emptyCard(String message) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Text(message, style: const TextStyle(color: AppColors.textMuted)),
-  );
-
-  Widget _imageFallback({double? width, double? height}) => Container(
-    width: width,
-    height: height,
-    color: AppColors.divider,
-    alignment: Alignment.center,
-    child: const Icon(Icons.restaurant, color: AppColors.textMuted),
-  );
+  Widget _imageFallback({double? width, double? height}) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      width: width,
+      height: height,
+      color: c.outline,
+      alignment: Alignment.center,
+      child: Icon(Icons.restaurant, color: c.onSurfaceVariant),
+    );
+  }
 }

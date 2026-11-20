@@ -4,15 +4,41 @@ import '../../data/dataresource/local_database_service.dart';
 import '../../data/models/meal_model.dart';
 import '../../data/models/planned_meal.dart';
 import 'planner_state.dart';
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const plannerSlots = ['Breakfast', 'Lunch', 'Dinner'];
 
+
 class PlannerCubit extends Cubit<PlannerState> {
-  PlannerCubit({LocalDatabaseService? databaseService})
-    : _database = databaseService ?? LocalDatabaseService.instance,
-      super(PlannerState(selectedDay: _dateOnly(DateTime.now())));
+  PlannerCubit({
+    LocalDatabaseService? databaseService,
+    FirebaseAuth? auth,                      // <-- ده المهم
+  })  : _database = databaseService ?? LocalDatabaseService.instance,
+        _auth = auth ?? FirebaseAuth.instance,
+        super(PlannerState(selectedDay: _dateOnly(DateTime.now()))) {
+    _lastUid = _auth.currentUser?.uid;
+    _authSub = _auth.authStateChanges().listen((user) {
+      if (user?.uid == _lastUid) return;
+      _lastUid = user?.uid;
+      emit(PlannerState(selectedDay: state.selectedDay));
+      loadDay(state.selectedDay);
+    });
+  }
 
   final LocalDatabaseService _database;
+  final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSub;
+  String? _lastUid;
+
+  String get _uid => _auth.currentUser?.uid ?? 'guest';
+
+
+  @override
+  Future<void> close() async {
+    await _authSub?.cancel();
+    return super.close();
+  }
 
   // TODO: Add a pending-sync flag when planner data is connected to a backend.
 
@@ -36,6 +62,7 @@ class PlannerCubit extends Cubit<PlannerState> {
         Duration(days: selectedDay.weekday - DateTime.monday),
       );
       final weekMeals = await _database.getPlannedMealsBetween(
+        _uid,
         weekStart,
         weekStart.add(const Duration(days: 6)),
       );
@@ -70,6 +97,7 @@ class PlannerCubit extends Cubit<PlannerState> {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
       await _database.savePlannedMeal(
+        _uid,
         PlannedMeal.fromMeal(
           meal: meal,
           day: day,
@@ -92,7 +120,7 @@ class PlannerCubit extends Cubit<PlannerState> {
   Future<void> removeMeal(PlannedMeal meal) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await _database.removePlannedMeal(meal);
+      await _database.removePlannedMeal(_uid,meal);
       await loadDay(state.selectedDay);
     } catch (_) {
       emit(
@@ -107,7 +135,7 @@ class PlannerCubit extends Cubit<PlannerState> {
   Future<List<MealModel>> cachedMeals() => _database.getCachedMeals(limit: 50);
 
   Future<PlannedMeal?> plannedMeal(DateTime day, String slot) =>
-      _database.getPlannedMeal(day, slot);
+      _database.getPlannedMeal(_uid,day, slot);
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
