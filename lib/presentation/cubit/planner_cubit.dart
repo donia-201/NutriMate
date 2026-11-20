@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/dataresource/local_database_service.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import '../../data/models/planned_meal.dart';
 import 'planner_state.dart';
 

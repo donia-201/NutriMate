@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import '../../data/models/planned_meal.dart';
 import '../cubit/planner_cubit.dart';
 import '../cubit/planner_state.dart';
@@ -170,7 +170,7 @@ class _PlannerView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
           child: Text(
-            '${DateFormat('EEE, MMM d').format(state.selectedDay)} • Planned, not consumed',
+            '${DateFormat('EEE, MMM d').format(state.selectedDay)} â€¢ Planned, not consumed',
             style: AppTheme.subTitle.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -245,7 +245,7 @@ class _PlannerView extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${meal.calories} kcal • ${meal.servings} serving${meal.servings == 1 ? '' : 's'}',
+                    '${meal.calories} kcal â€¢ ${meal.servings} serving${meal.servings == 1 ? '' : 's'}',
                     style: AppTheme.body.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -433,7 +433,7 @@ class _PlannerView extends StatelessWidget {
   String _weekLabel(DateTime day) {
     final monday = day.subtract(Duration(days: day.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
-    return '${DateFormat('MMMM d').format(monday)}–${DateFormat('d, yyyy').format(sunday)}';
+    return '${DateFormat('MMMM d').format(monday)}â€“${DateFormat('d, yyyy').format(sunday)}';
   }
 
   bool _sameDay(DateTime first, DateTime second) =>

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/dataresource/meal_api_services.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import 'add_to_planner_sheet.dart';
 
 class MealDetailsPage extends StatefulWidget {
@@ -71,7 +71,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${meal.strCategory ?? 'Meal'} • ${meal.strArea ?? 'International'}',
+              '${meal.strCategory ?? 'Meal'} â€¢ ${meal.strArea ?? 'International'}',
             ),
             const SizedBox(height: 20),
             SizedBox(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_theme.dart' hide AppColors;
 import '../../core/utils/app_colors.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
 import '../cubit/search_cubit.dart';
@@ -200,7 +200,7 @@ class _HomeViewState extends State<_HomeView> {
                             'No recipes available. Check your connection.',
                       ),
                     const SizedBox(height: 24),
-                    _nutritionCard(),
+                    _nutritionCard(state),
                     const SizedBox(height: 20),
                     if (state.categories.isNotEmpty)
                       Wrap(
@@ -209,24 +209,24 @@ class _HomeViewState extends State<_HomeView> {
                         children: state.categories
                             .map(
                               (category) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                child: Text(
-                                  category,
-                                  style: const TextStyle(
-                                    color: AppColors.textDark,
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Text(
+                              category,
+                              style: const TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
                               ),
-                            )
+                            ),
+                          ),
+                        )
                             .toList(),
                       )
                     else if (state.isLoading)
@@ -332,12 +332,12 @@ class _HomeViewState extends State<_HomeView> {
                       )
                     else
                       ...state.popularMeals.map(
-                        (meal) => Padding(
+                            (meal) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _popularTile(
                             meal,
                             state.favoriteIds.contains(meal.idMeal),
-                            () => cubit.toggleFavorite(meal),
+                                () => cubit.toggleFavorite(meal),
                           ),
                         ),
                       ),
@@ -492,6 +492,7 @@ class _HomeViewState extends State<_HomeView> {
 
   Widget _mealCard(MealModel meal, HomeState state, HomeCubit cubit) {
     final fav = state.favoriteIds.contains(meal.idMeal);
+    final calories = state.mealNutrition?.calories;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -543,15 +544,19 @@ class _HomeViewState extends State<_HomeView> {
                 ),
                 const SizedBox(width: 10),
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      '— kcal',
-                      style: TextStyle(
+                    Text(
+                      calories == null
+                          ? '— kcal'
+                          : '${calories.toStringAsFixed(0)} kcal',
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13.5,
                         color: AppColors.textDark,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     IconButton(
                       constraints: const BoxConstraints(
                         minWidth: 40,
@@ -580,44 +585,108 @@ class _HomeViewState extends State<_HomeView> {
     );
   }
 
-  Widget _nutritionCard() => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Today's Nutrition",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+  Widget _nutritionCard(HomeState state) {
+    final nutrition = state.mealNutrition;
+
+    String value(double? number, String unit) {
+      if (number == null) return '--';
+      return '${number.toStringAsFixed(1)}$unit';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Meal Nutrition',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _macroRing('1,240', 'Calories', true),
-            _macroRing('76g', 'Protein\nTarget not set', false),
-            _macroRing('142g', 'Carbs\nTarget not set', false),
-            _macroRing('41g', 'Fat\nTarget not set', false),
-          ],
-        ),
-        const SizedBox(height: 14),
-        const Center(
-          child: Text(
-            'Calories: 1,240 / 2,000 kcal • Macro targets not set',
-            textAlign: TextAlign.center,
+          const SizedBox(height: 5),
+          const Text(
+            'Nutrition values for the whole recipe',
             style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 16),
+          if (state.isNutritionLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryGreen,
+                ),
+              ),
+            )
+          else if (nutrition == null)
+            Column(
+              children: [
+                Text(
+                  state.nutritionError ??
+                      'Nutrition data is not available yet.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: state.mealOfDay == null
+                      ? null
+                      : () => context.read<HomeCubit>().loadMealNutrition(
+                    state.mealOfDay!,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            )
+          else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _macroRing(value(nutrition.calories, ''), 'Calories\nkcal', true),
+                  _macroRing(value(nutrition.protein, 'g'), 'Protein', false),
+                  _macroRing(
+                    value(nutrition.carbohydrates, 'g'),
+                    'Carbs',
+                    false,
+                  ),
+                  _macroRing(value(nutrition.fat, 'g'), 'Fat', false),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (!nutrition.isComplete)
+                const Text(
+                  'Some ingredients or nutrients could not be calculated. '
+                      'Displayed values may be incomplete.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                )
+              else if (nutrition.isEstimated)
+                const Text(
+                  'Some ingredient quantities were estimated.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                )
+              else
+                const Text(
+                  'All available ingredient quantities were calculated.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+            ],
+        ],
+      ),
+    );
+  }
 
   Widget _macroRing(String value, String label, bool primary) => Column(
     children: [
@@ -655,74 +724,75 @@ class _HomeViewState extends State<_HomeView> {
     ],
   );
 
-  Widget _popularTile(
-    MealModel meal,
-    bool fav,
-    VoidCallback onTap,
-  ) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Image.network(
-            meal.strMealThumb,
-            width: 65,
-            height: 65,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _imageFallback(width: 65, height: 65),
-          ),
+  Widget _popularTile(MealModel meal, bool fav, VoidCallback onTap) =>
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                meal.strMeal,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.textDark,
-                ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.network(
+                meal.strMealThumb,
+                width: 65,
+                height: 65,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    _imageFallback(width: 65, height: 65),
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.strMeal,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Nutrition data unavailable',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 2),
-              const Text(
-                'Nutrition data unavailable',
-                style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            ),
+            IconButton(
+              onPressed: onTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              icon: Icon(
+                fav ? Icons.favorite : Icons.favorite_border,
+                color: fav ? AppColors.accentHeart : AppColors.textMuted,
+                size: 20,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        IconButton(
-          onPressed: onTap,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          icon: Icon(
-            fav ? Icons.favorite : Icons.favorite_border,
-            color: fav ? AppColors.accentHeart : AppColors.textMuted,
-            size: 20,
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 
   Widget _emptyCard(String message) => Container(
     width: double.infinity,

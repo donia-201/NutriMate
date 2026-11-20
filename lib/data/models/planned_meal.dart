@@ -1,4 +1,4 @@
-import 'meal.model.dart';
+import 'meal_model.dart';
 
 class PlannedMeal {
   final int? localId;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/app_theme.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import 'meal_details_page.dart';
@@ -46,15 +46,15 @@ class _SearchViewState extends State<_SearchView> {
     ['Side dishes', 'https://www.themealdb.com/images/category/side.png'],
   ];
   static const _countries = [
-    ('Greece', '🇬🇷', 'Greek'),
-    ('Italy', '🇮🇹', 'Italian'),
-    ('Mexico', '🇲🇽', 'Mexican'),
-    ('India', '🇮🇳', 'Indian'),
-    ('Japan', '🇯🇵', 'Japanese'),
-    ('Egypt', '🇪🇬', 'Egyptian'),
-    ('France', '🇫🇷', 'French'),
-    ('Thailand', '🇹🇭', 'Thai'),
-    ('USA', '🇺🇸', 'American'),
+    ('Greece', 'ðŸ‡¬ðŸ‡·', 'Greek'),
+    ('Italy', 'ðŸ‡®ðŸ‡¹', 'Italian'),
+    ('Mexico', 'ðŸ‡²ðŸ‡½', 'Mexican'),
+    ('India', 'ðŸ‡®ðŸ‡³', 'Indian'),
+    ('Japan', 'ðŸ‡¯ðŸ‡µ', 'Japanese'),
+    ('Egypt', 'ðŸ‡ªðŸ‡¬', 'Egyptian'),
+    ('France', 'ðŸ‡«ðŸ‡·', 'French'),
+    ('Thailand', 'ðŸ‡¹ðŸ‡­', 'Thai'),
+    ('USA', 'ðŸ‡ºðŸ‡¸', 'American'),
   ];
   static const _ingredients = <List<String>>[
     ['Avocado', 'avocado'],
@@ -422,7 +422,7 @@ class _SearchViewState extends State<_SearchView> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${meal.strCategory ?? 'Meal'} • ${meal.strArea ?? 'International'}',
+                    '${meal.strCategory ?? 'Meal'} â€¢ ${meal.strArea ?? 'International'}',
                     style: AppTheme.small.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),

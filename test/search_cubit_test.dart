@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nutri_mate/data/dataresource/local_database_service.dart';
 import 'package:nutri_mate/data/dataresource/meal_api_services.dart';
-import 'package:nutri_mate/data/models/meal.model.dart';
+import 'package:nutri_mate/data/models/meal_model.dart';
 import 'package:nutri_mate/presentation/cubit/search_cubit.dart';
 import 'package:nutri_mate/presentation/cubit/search_state.dart';
 

@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-import '../models/meal.model.dart';
+
+import '../models/meal_model.dart';
 import '../models/planned_meal.dart';
 
 enum LocalDatabaseErrorType { open, read, write, delete }
@@ -17,7 +18,9 @@ class LocalDatabaseException implements Exception {
 
 class LocalDatabaseService {
   LocalDatabaseService._();
+
   static final LocalDatabaseService instance = LocalDatabaseService._();
+
   Database? _db;
   Future<Database>? _dbFuture;
 
@@ -79,15 +82,38 @@ class LocalDatabaseService {
         INSERT INTO meals (idMeal, strMeal, strCategory, strArea, strMealThumb,
           strInstructions, strYoutube, detailsLoaded, isFavorite, cachedAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?,
-          COALESCE((SELECT isFavorite FROM meals WHERE idMeal = ?), 0), ?)
+          COALESCE(
+            (SELECT isFavorite FROM meals WHERE idMeal = ?),
+            0
+          ),
+          ?
+        )
         ON CONFLICT(idMeal) DO UPDATE SET
           strMeal = excluded.strMeal,
-          strCategory = COALESCE(excluded.strCategory, meals.strCategory),
-          strArea = COALESCE(excluded.strArea, meals.strArea),
-          strMealThumb = excluded.strMealThumb,
-          strInstructions = COALESCE(excluded.strInstructions, meals.strInstructions),
-          strYoutube = COALESCE(excluded.strYoutube, meals.strYoutube),
-          detailsLoaded = MAX(excluded.detailsLoaded, meals.detailsLoaded),
+          strCategory = COALESCE(
+            excluded.strCategory,
+            meals.strCategory
+          ),
+          strArea = COALESCE(
+            excluded.strArea,
+            meals.strArea
+          ),
+          strMealThumb = COALESCE(
+            NULLIF(excluded.strMealThumb, ''),
+            meals.strMealThumb
+          ),
+          strInstructions = COALESCE(
+            NULLIF(excluded.strInstructions, ''),
+            meals.strInstructions
+          ),
+          strYoutube = COALESCE(
+            NULLIF(excluded.strYoutube, ''),
+            meals.strYoutube
+          ),
+          detailsLoaded = MAX(
+            excluded.detailsLoaded,
+            meals.detailsLoaded
+          ),
           cachedAt = excluded.cachedAt
       ''',
           [
@@ -226,9 +252,9 @@ class LocalDatabaseService {
   }
 
   Future<List<PlannedMeal>> getPlannedMealsBetween(
-    DateTime start,
-    DateTime end,
-  ) async {
+      DateTime start,
+      DateTime end,
+      ) async {
     final rows = await (await database).query(
       'planned_meals',
       where: 'day >= ? AND day <= ?',

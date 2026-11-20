@@ -1,4 +1,4 @@
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 
 enum SearchMode { search, category, country, ingredient }
 

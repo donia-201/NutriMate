@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
-import '../../data/models/meal.model.dart';
+import '../../data/models/meal_model.dart';
 import '../cubit/planner_cubit.dart';
 
 Future<bool?> showAddToPlannerSheet(
@@ -169,7 +169,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${widget.meal.strCategory ?? 'Meal'} • ${widget.meal.strArea ?? 'International'}',
+                '${widget.meal.strCategory ?? 'Meal'} â€¢ ${widget.meal.strArea ?? 'International'}',
               ),
               const SizedBox(height: 4),
               Text(

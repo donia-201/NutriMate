@@ -1,8 +1,7 @@
-import 'dart:convert';
-import 'dart:async';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import '../models/meal.model.dart';
+import 'package:dio/dio.dart';
+
+import '../../core/network/dio_client.dart';
+import '../models/meal_model.dart';
 
 enum MealApiErrorType { network, timeout, http, invalidResponse }
 
@@ -22,60 +21,60 @@ class MealApiException implements Exception {
 }
 
 class MealApiService {
-  static const String _baseUrl = 'https://www.themealdb.com/api/json/v1/1/';
-  final http.Client _client;
-  MealApiService({http.Client? client}) : _client = client ?? http.Client();
+  MealApiService({DioClient? client})
+      : _client = client ?? DioClient(),
+        _ownsClient = client == null;
 
-  Future<Map<String, dynamic>> _getJson(String endpoint) async {
+  final DioClient _client;
+  final bool _ownsClient;
+
+  Future<Map<String, dynamic>> _getJson(
+      String endpoint, {
+        Map<String, dynamic>? query,
+      }) async {
     try {
-      final response = await _client
-          .get(Uri.parse('$_baseUrl$endpoint'))
-          .timeout(const Duration(seconds: 12));
-      if (response.statusCode != 200) {
+      final response = await _client.get(endpoint, queryParameters: query);
+      final code = response.statusCode;
+      if (code != null && code != 200) {
         throw MealApiException(
           type: MealApiErrorType.http,
           message: 'TheMealDB request failed.',
-          statusCode: response.statusCode,
+          statusCode: code,
         );
       }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const MealApiException(
-          type: MealApiErrorType.invalidResponse,
-          message: 'Unexpected TheMealDB response.',
-        );
-      }
-      return decoded;
-    } on TimeoutException {
-      throw const MealApiException(
-        type: MealApiErrorType.timeout,
-        message: 'The search took too long. Please try again.',
-      );
-    } on http.ClientException {
-      throw const MealApiException(
-        type: MealApiErrorType.network,
-        message: 'Could not connect to TheMealDB.',
-      );
-    } on SocketException {
-      throw const MealApiException(
-        type: MealApiErrorType.network,
-        message: 'Could not connect to TheMealDB.',
-      );
-    } on HandshakeException {
-      throw const MealApiException(
-        type: MealApiErrorType.network,
-        message: 'A secure connection to TheMealDB could not be established.',
-      );
-    } on HttpException {
-      throw const MealApiException(
-        type: MealApiErrorType.network,
-        message: 'TheMealDB returned an invalid network response.',
-      );
-    } on FormatException {
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
       throw const MealApiException(
         type: MealApiErrorType.invalidResponse,
         message: 'Unexpected TheMealDB response.',
       );
+    } on DioException catch (error) {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          throw const MealApiException(
+            type: MealApiErrorType.timeout,
+            message: 'The search took too long. Please try again.',
+          );
+        case DioExceptionType.badResponse:
+          throw MealApiException(
+            type: MealApiErrorType.http,
+            message: 'TheMealDB request failed.',
+            statusCode: error.response?.statusCode,
+          );
+        case DioExceptionType.badCertificate:
+          throw const MealApiException(
+            type: MealApiErrorType.network,
+            message:
+            'A secure connection to TheMealDB could not be established.',
+          );
+        default:
+          throw const MealApiException(
+            type: MealApiErrorType.network,
+            message: 'Could not connect to TheMealDB.',
+          );
+      }
     }
   }
 
@@ -89,9 +88,7 @@ class MealApiService {
 
   Future<MealModel?> getMealById(String id) async {
     if (id.trim().isEmpty) return null;
-    final meals = (await _getJson(
-      'lookup.php?i=${Uri.encodeQueryComponent(id)}',
-    ))['meals'];
+    final meals = (await _getJson('lookup.php', query: {'i': id}))['meals'];
     if (meals is List && meals.isNotEmpty && meals.first is Map) {
       return MealModel.fromJson(Map<String, dynamic>.from(meals.first as Map));
     }
@@ -109,48 +106,38 @@ class MealApiService {
   }
 
   Future<List<MealModel>> getMealsByCategory(String category) async {
-    final data = await _getJson(
-      'filter.php?c=${Uri.encodeQueryComponent(category)}',
-    );
+    final data = await _getJson('filter.php', query: {'c': category});
     final meals = data['meals'];
     if (meals is! List) return [];
     return meals
         .whereType<Map>()
         .map(
           (e) => MealModel.fromFilterJson(
-            Map<String, dynamic>.from(e),
-            category: category,
-          ),
-        )
+        Map<String, dynamic>.from(e),
+        category: category,
+      ),
+    )
         .where((m) => m.idMeal.isNotEmpty)
         .toList();
   }
 
   Future<List<MealModel>> getMealsByCountry(String country) async {
-    final data = await _getJson(
-      'filter.php?a=${Uri.encodeQueryComponent(country)}',
-    );
+    final data = await _getJson('filter.php', query: {'a': country});
     return _parseFilteredMeals(data['meals'], area: country);
   }
 
   Future<List<MealModel>> getMealsByIngredient(String ingredient) async {
-    final data = await _getJson(
-      'filter.php?i=${Uri.encodeQueryComponent(ingredient)}',
-    );
+    final data = await _getJson('filter.php', query: {'i': ingredient});
     return _parseFilteredMeals(data['meals']);
   }
 
   Future<List<MealModel>> searchMeals(String query) async {
-    final data = await _getJson(
-      'search.php?s=${Uri.encodeQueryComponent(query)}',
-    );
+    final data = await _getJson('search.php', query: {'s': query});
     final meals = data['meals'];
     if (meals is! List) return [];
     return meals
         .whereType<Map>()
-        .map((meal) {
-          return MealModel.fromJson(Map<String, dynamic>.from(meal));
-        })
+        .map((meal) => MealModel.fromJson(Map<String, dynamic>.from(meal)))
         .where((meal) => meal.idMeal.isNotEmpty)
         .toList();
   }
@@ -159,12 +146,12 @@ class MealApiService {
     if (value is! List) return [];
     return value
         .whereType<Map>()
-        .map((meal) {
-          return MealModel.fromFilterJson(
-            Map<String, dynamic>.from(meal),
-            area: area,
-          );
-        })
+        .map(
+          (meal) => MealModel.fromFilterJson(
+        Map<String, dynamic>.from(meal),
+        area: area,
+      ),
+    )
         .where((meal) => meal.idMeal.isNotEmpty)
         .toList();
   }
@@ -189,5 +176,9 @@ class MealApiService {
     return unique.values.toList();
   }
 
-  void dispose() => _client.close();
+  void dispose() {
+    if (_ownsClient) {
+      _client.dispose();
+    }
+  }
 }
