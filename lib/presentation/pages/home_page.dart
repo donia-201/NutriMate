@@ -12,6 +12,7 @@ import '../widgets/bottom_nav.dart';
 import 'planner_page.dart';
 import 'search_page.dart';
 import 'profile_screen.dart';
+import '../cubit/profile_cubit.dart';
 
 class HomePage extends StatelessWidget {
   final String userName;
@@ -132,12 +133,14 @@ class _HomeViewState extends State<_HomeView> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Hello, ${widget.userName}',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textDark,
+                            BlocBuilder<ProfileCubit, ProfileState>(
+                              builder: (context, profile) => Text(
+                                'Hello, ${profile.name}',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 2),
