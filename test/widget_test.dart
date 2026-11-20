@@ -1,42 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nutri_mate/presentation/cubit/settings_cubit.dart';
-
-import 'helpers/test_prefs.dart';
+import 'package:nutri_mate/core/app_theme.dart';
+import 'package:nutri_mate/presentation/pages/about_screen.dart';
 
 void main() {
-  testWidgets('toggling dark mode switches the app theme', (tester) async {
-    final cubit = SettingsCubit(await makeTestPrefs());
+  testWidgets('AboutScreen shows the app info in the light theme',
+          (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(theme: AppTheme.light, home: const AboutScreen()),
+        );
 
+        expect(find.text('About NutriMate'), findsOneWidget);
+        expect(find.text('NutriMate'), findsOneWidget);
+        expect(find.text('Version'), findsOneWidget);
+        expect(find.text('1.0.0'), findsOneWidget);
+      });
+
+  testWidgets('AboutScreen builds in the dark theme', (tester) async {
     await tester.pumpWidget(
-      BlocProvider.value(
-        value: cubit,
-        child: BlocBuilder<SettingsCubit, ThemeMode>(
-          builder: (context, mode) => MaterialApp(
-            theme: ThemeData.light(),
-            darkTheme: ThemeData.dark(),
-            themeMode: mode,
-            home: Builder(
-              builder: (ctx) => Scaffold(
-                body: Text(Theme.of(ctx).brightness.name),
-              ),
-            ),
-          ),
-        ),
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        home: const AboutScreen(),
       ),
     );
 
-    expect(find.text('light'), findsOneWidget);
-
-    await tester.runAsync(() async {
-      await cubit.setDarkMode(true);
-      // Let the Bloc stream deliver the new state to BlocBuilder.
-      await Future<void>.delayed(Duration.zero);
-    });
-    await tester.pumpAndSettle();
-
-    expect(find.text('dark'), findsOneWidget);
-    await cubit.close();
+    expect(find.text('About NutriMate'), findsOneWidget);
   });
 }

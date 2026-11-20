@@ -7,7 +7,6 @@ import 'core/app_theme.dart';
 import 'firebase_options.dart';
 import 'presentation/pages/splash_page.dart';
 import 'presentation/cubit/profile_cubit.dart';
-import 'presentation/cubit/settings_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,24 +22,21 @@ Future<void> main() async {
   } on UnsupportedError catch (error) {
     firebaseInitializationError =
         error.message?.toString() ??
-        'Firebase is not configured for this platform.';
+            'Firebase is not configured for this platform.';
   } catch (_) {
     firebaseInitializationError =
-        'Could not initialize Firebase. Check your configuration and try again.';
+    'Could not initialize Firebase. Check your configuration and try again.';
   }
 
   final prefs = await SharedPreferencesWithCache.create(
     cacheOptions: const SharedPreferencesWithCacheOptions(
-      allowList: {'themeMode', 'dietary', 'calorieGoal'},
+      allowList: ProfileCubit.keys,
     ),
   );
 
   runApp(
-    MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => ProfileCubit(prefs)),
-        BlocProvider(create: (_) => SettingsCubit(prefs)),
-      ],
+    BlocProvider(
+      create: (_) => ProfileCubit(prefs),
       child: NutriMateApp(
         firebaseInitializationError: firebaseInitializationError,
       ),
@@ -52,16 +48,16 @@ class NutriMateApp extends StatelessWidget {
   final String? firebaseInitializationError;
   const NutriMateApp({super.key, this.firebaseInitializationError});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsCubit, ThemeMode>(
-      builder: (context, themeMode) => MaterialApp(
+    return BlocBuilder<ProfileCubit, ProfileState>(
+      buildWhen: (prev, curr) => prev.themeMode != curr.themeMode,
+      builder: (context, profile) => MaterialApp(
         title: 'NutriMate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
-        themeMode: themeMode,
+        themeMode: profile.themeMode,
         home: SplashPage(
           firebaseInitializationError: firebaseInitializationError,
         ),
