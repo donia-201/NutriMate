@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_assets.dart';
 import '../../core/utils/app_text_style.dart';
 import '../../models/onboarding_model.dart';
 import '../../presentation/pages/auth_gate.dart';
+import '../cubit/profile_cubit.dart';
 
 class OnboardingPage extends StatefulWidget {
   final String? firebaseInitializationError;
@@ -22,41 +24,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
       image: AppAssets.onboarding1,
       title: 'Discover delicious\nrecipes',
       description:
-          'Discover meals from different countries, cuisines,\nand ingredients.',
+      'Discover meals from different countries, cuisines,\nand ingredients.',
     ),
     OnboardingModel(
       image: AppAssets.onboarding2,
       title: 'Plan your week with\nease',
       description:
-          'Organize breakfast, lunch, and dinner in one\nsimple weekly planner.',
+      'Organize breakfast, lunch, and dinner in one\nsimple weekly planner.',
     ),
     OnboardingModel(
       image: AppAssets.onboarding3,
       title: 'Understand what you\neat',
       description:
-          'Get personalized nutrition insights and healthier\nalternatives with NutriAI.',
+      'Get personalized nutrition insights and healthier\nalternatives with NutriAI.',
     ),
   ];
 
-  void _onNextPressed() {
-    if (_currentIndex < _items.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOutCubic,
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AuthGate(
-            firebaseInitializationError: widget.firebaseInitializationError,
-          ),
-        ),
-      );
-    }
-  }
+  Future<void> _goToAuth() async {
+    // Save that the user has completed/skipped onboarding.
+    await context.read<ProfileCubit>().markOnboardingSeen();
 
-  void _onSkipPressed() {
+    if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -65,6 +54,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ),
       ),
     );
+  }
+
+  void _onNextPressed() {
+    if (_currentIndex < _items.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
+    } else {
+      _goToAuth();
+    }
+  }
+
+  void _onSkipPressed() {
+    _goToAuth();
   }
 
   @override
@@ -169,7 +173,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   _items.length,
-                  (index) => AnimatedContainer(
+                      (index) => AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     margin: const EdgeInsets.symmetric(horizontal: 6),
                     height: 8,

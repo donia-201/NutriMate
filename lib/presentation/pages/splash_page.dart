@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_text_style.dart';
+import '../cubit/profile_cubit.dart';
+import 'auth_gate.dart';
 import 'onboarding_page.dart';
 
 class SplashPage extends StatefulWidget {
@@ -59,6 +62,7 @@ class _SplashPageState extends State<SplashPage>
         curve: const Interval(0.4, 0.85, curve: Curves.elasticOut),
       ),
     );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _controller.forward();
@@ -66,15 +70,22 @@ class _SplashPageState extends State<SplashPage>
     });
 
     _navigationTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => OnboardingPage(
-              firebaseInitializationError: widget.firebaseInitializationError,
-            ),
+      if (!mounted) return;
+      final seen = context.read<ProfileCubit>().onboardingSeen;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => seen
+              ? AuthGate(
+            firebaseInitializationError:
+            widget.firebaseInitializationError,
+          )
+              : OnboardingPage(
+            firebaseInitializationError:
+            widget.firebaseInitializationError,
           ),
-        );
-      }
+        ),
+      );
     });
   }
 
