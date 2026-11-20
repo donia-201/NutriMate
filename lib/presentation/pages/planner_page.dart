@@ -9,6 +9,7 @@ import '../../data/models/planned_meal.dart';
 import '../cubit/planner_cubit.dart';
 import '../cubit/planner_state.dart';
 import 'add_to_planner_sheet.dart';
+import '../../core/guest_guard.dart';
 
 class PlannerPage extends StatelessWidget {
   final PlannerCubit? cubit;
@@ -68,12 +69,15 @@ class _PlannerView extends StatelessWidget {
               )
             else
               _mealCards(context, state, cubit),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              sliver: SliverToBoxAdapter(
-                child: _addButton(context, cubit, state.selectedDay),
+            if (!state.isLoading &&
+                state.errorMessage == null &&
+                state.meals.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                sliver: SliverToBoxAdapter(
+                  child: _addButton(context, cubit, state.selectedDay),
+                ),
               ),
-            ),
           ],
         ),
       );
@@ -267,14 +271,19 @@ class _PlannerView extends StatelessWidget {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: () => showAddToPlannerSheet(
-                  context,
-                  _asMeal(meal),
-                  initialDay: meal.day,
-                  cubit: cubit,
-                ),
+                onPressed: () async {
+                  if (!await requireSignedIn(context, feature: 'Meal planning')) return;
+                  if (!context.mounted) return;
+                  showAddToPlannerSheet(
+                    context,
+                    _asMeal(meal),
+                    initialDay: meal.day,
+                    cubit: cubit,
+                  );
+                },
                 child: const Text('Replace'),
               ),
+
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -321,7 +330,7 @@ class _PlannerView extends StatelessWidget {
   Widget _addButton(BuildContext context, PlannerCubit cubit, DateTime day) =>
       ElevatedButton(
         onPressed: () => _chooseMeal(context, cubit, day),
-        child: const Text('Add meal'),
+        child: Text(isGuestUser() ? 'Sign in to plan meals' : 'Add meal'),
       );
 
   Widget _message(BuildContext context, PlannerCubit cubit, String message) =>
@@ -346,6 +355,8 @@ class _PlannerView extends StatelessWidget {
     PlannerCubit cubit,
     DateTime day,
   ) async {
+    if (!await requireSignedIn(context, feature: 'Meal planning')) return;
+    if (!context.mounted) return;
     final meals = await cubit.cachedMeals();
     if (!context.mounted) return;
     if (meals.isEmpty) {
