@@ -19,26 +19,32 @@ class RecipeModel {
 
   factory RecipeModel.fromSpoonacularJson(Map<String, dynamic> json) {
     int caloriesVal = 0;
-    if (json['nutrition'] != null && json['nutrition']['nutrients'] != null) {
-      var caloriesNutrient = (json['nutrition']['nutrients'] as List).firstWhere(
-        (element) => element['name'] == 'Calories',
-        orElse: () => null,
-      );
-      if (caloriesNutrient != null) {
-        caloriesVal = (caloriesNutrient['amount'] as num).round();
+    final nutrition = json['nutrition'];
+    if (nutrition is Map) {
+      final nutrients = nutrition['nutrients'];
+      if (nutrients is List) {
+        for (final value in nutrients.whereType<Map>()) {
+          if (value['name']?.toString() == 'Calories') {
+            final amount = value['amount'];
+            if (amount is num) caloriesVal = amount.round();
+            break;
+          }
+        }
       }
     }
 
+    final cuisines = json['cuisines'];
+    final dishTypes = json['dishTypes'];
     return RecipeModel(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? '',
-      image: json['image'] ?? '',
+      id: json['id'] is int ? json['id'] as int : 0,
+      title: json['title']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
       calories: caloriesVal,
-      cuisine: (json['cuisines'] != null && (json['cuisines'] as List).isNotEmpty)
-          ? json['cuisines'][0]
+      cuisine: cuisines is List && cuisines.isNotEmpty
+          ? cuisines.first.toString()
           : 'International',
-      category: (json['dishTypes'] != null && (json['dishTypes'] as List).isNotEmpty)
-          ? json['dishTypes'][0]
+      category: dishTypes is List && dishTypes.isNotEmpty
+          ? dishTypes.first.toString()
           : 'General',
     );
   }

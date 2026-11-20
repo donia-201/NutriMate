@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutri_mate/core/app_theme.dart';
 import 'package:nutri_mate/core/app_widgets.dart';
 import 'package:nutri_mate/presentation/cubit/profile_cubit.dart';
-import 'package:nutri_mate/presentation/cubit/settings_cubit.dart';
 import 'package:nutri_mate/presentation/pages/edit_profile_screen.dart';
 import 'package:nutri_mate/presentation/pages/about_screen.dart';
+import 'package:nutri_mate/presentation/pages/planner_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -29,7 +29,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final profile = context.watch<ProfileCubit>().state;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = profile.themeMode == ThemeMode.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -83,21 +83,17 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ---------- Meals ----------
+          // ---------- Menu (meals + dark mode + about + logout) ----------
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(children: [
               _MenuTile(Icons.favorite_border, 'Favorite Meals', () => _soon(context)),
-              _MenuTile(Icons.calendar_today_outlined, 'Planned Meals', () => _soon(context)),
+              _MenuTile(Icons.calendar_today_outlined, 'Planned Meals', () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => PlannerPage()),
+              ),
+              ),
               _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
-            ]),
-          ),
-          const SizedBox(height: 16),
-
-          // ---------- Settings ----------
-          AppCard(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(children: [
               SwitchListTile(
                 secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),
                 title: Text(
@@ -105,7 +101,7 @@ class ProfileScreen extends StatelessWidget {
                   style: AppTheme.label.copyWith(color: c.onSurface),
                 ),
                 value: isDark,
-                onChanged: (v) => context.read<SettingsCubit>().setDarkMode(v),
+                onChanged: (v) => context.read<ProfileCubit>().setDarkMode(v),
               ),
               _MenuTile(
                 Icons.info_outline,
@@ -125,13 +121,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ---------- Diet, goals & sync ----------
-          AppButton(
-            label: 'Diet, goals & sync',
-            outlined: true,
-            onPressed: () => _openEditProfile(context),
-          ),
-          const SizedBox(height: 16),
+
 
           // ---------- Sync status ----------
           AppCard(

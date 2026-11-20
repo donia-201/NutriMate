@@ -1,4 +1,4 @@
-package com.example.ai_lingo
+package com.example.nutrimate
 
 import io.flutter.embedding.android.FlutterActivity
 
