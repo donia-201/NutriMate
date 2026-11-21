@@ -7,6 +7,8 @@ import '../../data/dataresource/local_database_service.dart';
 import '../../data/dataresource/meal_api_services.dart';
 import '../../data/models/meal_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
+import 'favorites_cubit.dart';
+import 'favorites_state.dart';
 import 'home_state.dart';
 
 class HomeCubit extends Cubit<HomeState> {
@@ -15,18 +17,31 @@ class HomeCubit extends Cubit<HomeState> {
     LocalDatabaseService? databaseService,
     NutritionRepository? nutritionRepository,
     Connectivity? connectivity,
+    FavoritesCubit? favoritesCubit,
   })  : _api = apiService ?? MealApiService(),
         _database = databaseService ?? LocalDatabaseService.instance,
         _nutritionRepository = nutritionRepository ?? NutritionRepository(),
         _connectivity = connectivity ?? Connectivity(),
+        _favorites = favoritesCubit ?? FavoritesCubit(),
+        _ownsFavorites = favoritesCubit == null,
         _ownsApi = apiService == null,
         _ownsNutritionRepository = nutritionRepository == null,
-        super(const HomeState());
+        super(const HomeState()) {
+    // المفضلة بتيجي من FavoritesCubit (per-user). أي تغيير فيها، سواء من
+    // الهوم أو من شاشة الـ Favorites أو من تغيير الحساب، بيوصل هنا لوحده.
+    _favoritesSub = _favorites.stream.listen((FavoritesState s) {
+      if (isClosed) return;
+      emit(state.copyWith(favorites: s.meals));
+    });
+  }
 
   final MealApiService _api;
   final LocalDatabaseService _database;
   final NutritionRepository _nutritionRepository;
   final Connectivity _connectivity;
+  final FavoritesCubit _favorites;
+  final bool _ownsFavorites;
+  StreamSubscription<FavoritesState>? _favoritesSub;
 
   final bool _ownsApi;
   final bool _ownsNutritionRepository;
@@ -36,8 +51,7 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> initialize() async {
     try {
-      final favorites = await _database.getFavorites();
-      if (isClosed) return;
+      final favorites = _favorites.state.meals;
       final cached = await _database.getCachedMeals();
       if (isClosed) return;
       final connection = await _connectivity.checkConnectivity();
@@ -104,8 +118,7 @@ class HomeCubit extends Cubit<HomeState> {
       final fetched = <MealModel>[?meal, ...popular];
       await _database.cacheMeals(fetched);
       if (isClosed) return;
-      final favorites = await _database.getFavorites();
-      if (isClosed) return;
+      final favorites = _favorites.state.meals;
 
       final selectedMeal = meal ?? state.mealOfDay;
 
@@ -129,13 +142,11 @@ class HomeCubit extends Cubit<HomeState> {
       }
     } catch (_) {
       List<MealModel> cached = const [];
-      List<MealModel> favorites = const [];
       try {
         cached = await _database.getCachedMeals();
-        if (isClosed) return;
-        favorites = await _database.getFavorites();
       } catch (_) {}
       if (isClosed) return;
+      final favorites = _favorites.state.meals;
       emit(
         state.copyWith(
           isLoading: false,
@@ -250,14 +261,26 @@ class HomeCubit extends Cubit<HomeState> {
         }
       }
 
-      await _database.setFavorite(toSave, !currentlyFavorite);
+      final ok = await _favorites.toggle(toSave);
+      if (isClosed) return;
+
+      if (!ok) {
+        emit(
+          state.copyWith(
+            errorMessage: _favorites.state.errorMessage ??
+                'Could not update favorites. Please try again.',
+          ),
+        );
+        return;
+      }
+
       await _database.cacheMeals([toSave]);
       if (isClosed) return;
-      final favorites = await _database.getFavorites();
-      if (isClosed) return;
+
+      // القايمة نفسها اتحدّثت من الـ listener فوق.
       emit(
         state.copyWith(
-          favorites: favorites,
+          favorites: _favorites.state.meals,
           clearError: true,
           clearFavoriteDetailError: true,
         ),
@@ -275,6 +298,11 @@ class HomeCubit extends Cubit<HomeState> {
   @override
   Future<void> close() async {
     await _subscription?.cancel();
+    await _favoritesSub?.cancel();
+
+    if (_ownsFavorites) {
+      await _favorites.close();
+    }
 
     if (_ownsApi) {
       _api.dispose();
