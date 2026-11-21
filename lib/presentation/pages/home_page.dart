@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_theme.dart' hide AppColors;
 import '../../core/utils/app_colors.dart';
 import '../../data/models/meal_model.dart';
+import '../../core/guest_guard.dart';
+import '../cubit/favorites_cubit.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
 import '../cubit/planner_cubit.dart';
@@ -28,7 +30,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) => MultiBlocProvider(
     providers: [
       BlocProvider(
-        create: (_) => HomeCubit()..initialize(),
+        create: (context) => HomeCubit(
+          favoritesCubit: context.read<FavoritesCubit>(),
+        )..initialize(),
       ),
       BlocProvider(
         create: (_) => SearchCubit(),
@@ -484,9 +488,15 @@ class _HomeViewState extends State<_HomeView> {
                                 state.favoriteIds
                                     .contains(
                                     meal.idMeal),
-                                    () => cubit
-                                    .toggleFavorite(
-                                    meal),
+                                    () async {
+                                  if (!await requireSignedIn(
+                                    context,
+                                    feature: 'Saving favorites',
+                                  )) {
+                                    return;
+                                  }
+                                  cubit.toggleFavorite(meal);
+                                },
                               ),
                             ),
                           ),
@@ -845,9 +855,15 @@ class _HomeViewState extends State<_HomeView> {
                       ),
                       padding:
                       EdgeInsets.zero,
-                      onPressed: () =>
-                          cubit.toggleFavorite(
-                              meal),
+                      onPressed: () async {
+                        if (!await requireSignedIn(
+                          context,
+                          feature: 'Saving favorites',
+                        )) {
+                          return;
+                        }
+                        cubit.toggleFavorite(meal);
+                      },
                       tooltip: fav
                           ? 'Remove from favorites'
                           : 'Add to favorites',
