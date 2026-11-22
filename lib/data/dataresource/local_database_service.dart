@@ -54,7 +54,7 @@ class LocalDatabaseService {
 
     return openDatabase(
       p.join(path, 'nutrimate_home.db'),
-      version: 5,
+version: 5,
 
       onCreate: (db, version) async {
         await db.execute('''
@@ -73,7 +73,8 @@ class LocalDatabaseService {
         ''');
 
         await _createPlannedMealsTable(db);
-        await _createUserTables(db);
+await _createFavoritesTable(db);
+        await _createLoggedMealsTable(db);
         await _createMealLogsTable(db);
       },
 
@@ -92,10 +93,10 @@ class LocalDatabaseService {
           await _createPlannedMealsTable(db);
         }
 
-        if (oldVersion < 4) {
-          await _createUserTables(db);
-        }
         if (oldVersion < 5) {
+          // Favorites are stored per user; the shared meals.isFavorite flag is ignored.
+          await _createFavoritesTable(db);
+          await _createLoggedMealsTable(db);
           await _createMealLogsTable(db);
         }
       },
@@ -193,6 +194,13 @@ class LocalDatabaseService {
     }
   }
 
+  // ============================================================
+  // FAVORITES (per user)
+  // ============================================================
+
+  /// Adds/removes [meal] from the favorites of [uid] only.
+  /// Meal details live in the shared `meals` cache table; ownership lives
+  /// in the `favorites` table.
   Future<void> setFavorite(
     String uid,
     MealModel meal,
@@ -200,23 +208,50 @@ class LocalDatabaseService {
   ) async {
     try {
       final db = await database;
-      if (favorite) {
-        await db.insert(
-          'user_favorites',
+
+      await db.transaction((txn) async {
+        if (!favorite) {
+          await txn.delete(
+            'favorites',
+            where: 'uid = ? AND idMeal = ?',
+            whereArgs: [uid, meal.idMeal],
+          );
+          return;
+        }
+
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final rows = await txn.query(
+          'meals',
+          where: 'idMeal = ?',
+          whereArgs: [meal.idMeal],
+          limit: 1,
+        );
+
+        final preserved = rows.isEmpty
+            ? meal
+            : MealModel.fromDbMap(rows.first).mergeDetails(meal);
+
+        await txn.insert(
+          'meals',
           {
-            'uid': uid,
-            ...meal.toDbMap(),
-            'savedAt': DateTime.now().millisecondsSinceEpoch,
+            ...preserved.toDbMap(),
+            'cachedAt': now,
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
-      } else {
-        await db.delete(
-          'user_favorites',
-          where: 'uid = ? AND idMeal = ?',
-          whereArgs: [uid, meal.idMeal],
+
+        await txn.insert(
+          'favorites',
+          {
+            'uid': uid,
+            'idMeal': meal.idMeal,
+            'addedAt': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
         );
-      }
+      });
+    } on LocalDatabaseException {
+      rethrow;
     } catch (_) {
       throw const LocalDatabaseException(
         type: LocalDatabaseErrorType.write,
@@ -225,13 +260,18 @@ class LocalDatabaseService {
     }
   }
 
+  /// Favorites of [uid], newest first.
   Future<List<MealModel>> getFavorites(String uid) async {
     try {
-      final rows = await (await database).query(
-        'user_favorites',
-        where: 'uid = ?',
-        whereArgs: [uid],
-        orderBy: 'savedAt DESC',
+      final rows = await (await database).rawQuery(
+        '''
+        SELECT m.*
+        FROM favorites f
+        INNER JOIN meals m ON m.idMeal = f.idMeal
+        WHERE f.uid = ?
+        ORDER BY f.addedAt DESC
+        ''',
+        [uid],
       );
       return rows.map(MealModel.fromDbMap).toList();
     } catch (_) {
@@ -244,7 +284,7 @@ class LocalDatabaseService {
 
   Future<bool> isFavorite(String uid, String mealId) async {
     final rows = await (await database).query(
-      'user_favorites',
+      'favorites',
       columns: ['idMeal'],
       where: 'uid = ? AND idMeal = ?',
       whereArgs: [uid, mealId],
@@ -355,22 +395,7 @@ class LocalDatabaseService {
     );
   }
 
-  Future<void> _createUserTables(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS user_favorites (
-        uid TEXT NOT NULL,
-        idMeal TEXT NOT NULL,
-        strMeal TEXT NOT NULL,
-        strCategory TEXT,
-        strArea TEXT,
-        strMealThumb TEXT,
-        strInstructions TEXT,
-        strYoutube TEXT,
-        detailsLoaded INTEGER NOT NULL DEFAULT 0,
-        savedAt INTEGER NOT NULL,
-        PRIMARY KEY(uid, idMeal)
-      )
-    ''');
+  Future<void> _createLoggedMealsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS logged_meals (
         uid TEXT NOT NULL,
@@ -512,6 +537,17 @@ class LocalDatabaseService {
         calories INTEGER NOT NULL DEFAULT 0,
         uid TEXT NOT NULL,
         UNIQUE(uid, day, slot)
+      )
+    ''');
+  }
+
+  Future<void> _createFavoritesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS favorites (
+        uid TEXT NOT NULL,
+        idMeal TEXT NOT NULL,
+        addedAt INTEGER NOT NULL,
+        PRIMARY KEY (uid, idMeal)
       )
     ''');
   }

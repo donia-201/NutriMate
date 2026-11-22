@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nutri_mate/presentation/cubit/favorites_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app_theme.dart';
 import 'firebase_options.dart';
@@ -35,8 +36,12 @@ Future<void> main() async {
   );
 
   runApp(
-    BlocProvider(
-      create: (_) => ProfileCubit(prefs),
+    MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ProfileCubit(prefs)),
+        // فوق الـ MaterialApp عشان الهوم والبروفايل وصفحة الـ AI يشوفوه.
+        BlocProvider(create: (_) => FavoritesCubit()),
+      ],
       child: NutriMateApp(
         firebaseInitializationError: firebaseInitializationError,
       ),

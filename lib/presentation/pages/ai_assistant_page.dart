@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../data/dataresource/local_database_service.dart';
+import '../../core/guest_guard.dart';
 import '../../data/models/ai_recipe_model.dart';
 import '../../data/models/healthy_alternative.dart';
 import '../../data/models/meal_analysis_request.dart';
@@ -10,6 +11,7 @@ import '../../data/models/meal_analysis_result.dart';
 import '../../data/models/meal_model.dart';
 import '../cubit/ai_chat_cubit.dart';
 import '../cubit/ai_chat_state.dart';
+import '../cubit/favorites_cubit.dart';
 import '../widgets/ai/ai_chat_bubbles.dart';
 import '../widgets/ai/alternative_recipe_card.dart';
 import '../widgets/ai/analysis_loading_card.dart';
@@ -66,25 +68,25 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   bool _showAnalysisAgain = false;
 
   Set<String> _savedIds = {};
+  StreamSubscription<dynamic>? _favoritesSub;
 
   bool get _isMealAnalysis => _selectedMode == AiAssistantMode.mealAnalysis;
 
   @override
   void initState() {
     super.initState();
-    _selectedMode = widget.initialMode;
-    _mealController.text = widget.initialMealDescription ?? '';
-    _loadSavedIds();
-    if ((widget.initialMealDescription ?? '').trim().isNotEmpty &&
-        widget.initialMode == AiAssistantMode.healthyAlternatives) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _submitRequest();
-      });
-    }
+    final favorites = context.read<FavoritesCubit>();
+    _savedIds = favorites.state.ids;
+    // بيتحدّث لوحده لما المفضلة تتغير أو الحساب يتغير.
+    _favoritesSub = favorites.stream.listen((state) {
+      if (!mounted) return;
+      setState(() => _savedIds = state.ids);
+    });
   }
 
   @override
   void dispose() {
+    _favoritesSub?.cancel();
     _mealController.dispose();
     _additionalRequestController.dispose();
     super.dispose();
@@ -272,20 +274,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   // Favorites
   // ---------------------------------------------------------------------------
 
-  Future<void> _loadSavedIds() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
-      final favorites = await LocalDatabaseService.instance.getFavorites(uid);
-      if (!mounted) return;
-
-      setState(() {
-        _savedIds = favorites.map((meal) => meal.idMeal).toSet();
-      });
-    } catch (_) {
-      // Saving still works; the hearts just start empty.
-    }
-  }
-
   MealModel _toMeal(AiRecipeModel recipe) {
     final instructions = recipe.description;
 
@@ -323,40 +311,21 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   }
 
   Future<void> _toggleSaved(AiRecipeModel recipe) async {
-    final wasSaved = _savedIds.contains(recipe.id);
+    if (!await requireSignedIn(context, feature: 'Saving favorites')) return;
+    if (!mounted) return;
+
+    final favorites = context.read<FavoritesCubit>();
+    final wasSaved = favorites.isFavorite(recipe.id);
 
     if (wasSaved && !await _confirmRemove()) return;
     if (!mounted) return;
 
-    setState(() {
-      if (wasSaved) {
-        _savedIds.remove(recipe.id);
-      } else {
-        _savedIds.add(recipe.id);
-      }
-    });
+    final ok = await favorites.toggle(_toMeal(recipe));
+    if (ok || !mounted) return;
 
-    try {
-      await LocalDatabaseService.instance.setFavorite(
-        FirebaseAuth.instance.currentUser?.uid ?? 'guest',
-        _toMeal(recipe),
-        !wasSaved,
-      );
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        if (wasSaved) {
-          _savedIds.add(recipe.id);
-        } else {
-          _savedIds.remove(recipe.id);
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update your favorites.')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not update your favorites.')),
+    );
   }
 
   // ---------------------------------------------------------------------------
