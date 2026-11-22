@@ -53,7 +53,7 @@ class LocalDatabaseService {
 
     return openDatabase(
       p.join(path, 'nutrimate_home.db'),
-      version: 3,
+      version: 4,
 
       onCreate: (db, version) async {
         await db.execute('''
@@ -72,6 +72,7 @@ class LocalDatabaseService {
         ''');
 
         await _createPlannedMealsTable(db);
+        await _createFavoritesTable(db);
       },
 
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -87,6 +88,12 @@ class LocalDatabaseService {
           );
 
           await _createPlannedMealsTable(db);
+        }
+
+        if (oldVersion < 4) {
+          // المفضلة بقت per-user. الـ isFavorite القديم في جدول meals
+          // كان مشترك بين كل الحسابات فبنتجاهله.
+          await _createFavoritesTable(db);
         }
       },
     );
@@ -183,33 +190,63 @@ class LocalDatabaseService {
     }
   }
 
+  // ============================================================
+  // FAVORITES (per user)
+  // ============================================================
+
+  /// Adds/removes [meal] from the favorites of [uid] only.
+  /// Meal details live in the shared `meals` cache table; ownership lives
+  /// in the `favorites` table.
   Future<void> setFavorite(
+      String uid,
       MealModel meal,
       bool favorite,
       ) async {
     try {
       final db = await database;
 
-      final rows = await db.query(
-        'meals',
-        where: 'idMeal = ?',
-        whereArgs: [meal.idMeal],
-        limit: 1,
-      );
+      await db.transaction((txn) async {
+        if (!favorite) {
+          await txn.delete(
+            'favorites',
+            where: 'uid = ? AND idMeal = ?',
+            whereArgs: [uid, meal.idMeal],
+          );
+          return;
+        }
 
-      final preserved = rows.isEmpty
-          ? meal
-          : MealModel.fromDbMap(rows.first).mergeDetails(meal);
+        final now = DateTime.now().millisecondsSinceEpoch;
 
-      await db.insert(
-        'meals',
-        {
-          ...preserved.toDbMap(),
-          'isFavorite': favorite ? 1 : 0,
-          'cachedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+        final rows = await txn.query(
+          'meals',
+          where: 'idMeal = ?',
+          whereArgs: [meal.idMeal],
+          limit: 1,
+        );
+
+        final preserved = rows.isEmpty
+            ? meal
+            : MealModel.fromDbMap(rows.first).mergeDetails(meal);
+
+        await txn.insert(
+          'meals',
+          {
+            ...preserved.toDbMap(),
+            'cachedAt': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+
+        await txn.insert(
+          'favorites',
+          {
+            'uid': uid,
+            'idMeal': meal.idMeal,
+            'addedAt': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      });
     } on LocalDatabaseException {
       rethrow;
     } catch (_) {
@@ -220,13 +257,18 @@ class LocalDatabaseService {
     }
   }
 
-  Future<List<MealModel>> getFavorites() async {
+  /// Favorites of [uid], newest first.
+  Future<List<MealModel>> getFavorites(String uid) async {
     try {
-      final rows = await (await database).query(
-        'meals',
-        where: 'isFavorite = ?',
-        whereArgs: [1],
-        orderBy: 'cachedAt DESC',
+      final rows = await (await database).rawQuery(
+        '''
+        SELECT m.*
+        FROM favorites f
+        INNER JOIN meals m ON m.idMeal = f.idMeal
+        WHERE f.uid = ?
+        ORDER BY f.addedAt DESC
+        ''',
+        [uid],
       );
 
       return rows.map(MealModel.fromDbMap).toList();
@@ -364,6 +406,17 @@ class LocalDatabaseService {
         calories INTEGER NOT NULL DEFAULT 0,
         uid TEXT NOT NULL,
         UNIQUE(uid, day, slot)
+      )
+    ''');
+  }
+
+  Future<void> _createFavoritesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS favorites (
+        uid TEXT NOT NULL,
+        idMeal TEXT NOT NULL,
+        addedAt INTEGER NOT NULL,
+        PRIMARY KEY (uid, idMeal)
       )
     ''');
   }
