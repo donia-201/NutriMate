@@ -35,7 +35,7 @@ void main() {
   });
 
   test('initialize emits error instead of remaining loading', () async {
-    when(() => database.getFavorites()).thenThrow(
+    when(() => database.getFavorites('test_user_123')).thenThrow(
       const LocalDatabaseException(
         type: LocalDatabaseErrorType.read,
         message: 'Could not read favorites.',
@@ -62,7 +62,7 @@ void main() {
         strMeal: 'Soup',
         strMealThumb: 'https://example.com/soup.jpg',
       );
-      when(() => database.getFavorites()).thenAnswer((_) async => const []);
+      when(() => database.getFavorites('test_user_123')).thenAnswer((_) async => const []);
       when(
         () => database.getCachedMeals(limit: any(named: 'limit')),
       ).thenAnswer((_) async => const []);
@@ -95,7 +95,7 @@ void main() {
         cubit.state.favoriteDetailErrorMessage,
         contains('Could not load recipe details'),
       );
-      verifyNever(() => database.setFavorite(any(), any()));
+      verifyNever(() => database.setFavorite( 'test_user_123' , any(), any()));
       await cubit.close();
     },
   );

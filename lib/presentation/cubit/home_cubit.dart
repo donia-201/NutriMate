@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/dataresource/local_database_service.dart';
@@ -21,7 +22,12 @@ class HomeCubit extends Cubit<HomeState> {
         _connectivity = connectivity ?? Connectivity(),
         _ownsApi = apiService == null,
         _ownsNutritionRepository = nutritionRepository == null,
-        super(const HomeState());
+        super(const HomeState()) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (isClosed) return;
+      refreshFavorites();
+    });
+  }
 
   final MealApiService _api;
   final LocalDatabaseService _database;
@@ -32,11 +38,21 @@ class HomeCubit extends Cubit<HomeState> {
   final bool _ownsNutritionRepository;
 
   StreamSubscription<List<ConnectivityResult>>? _subscription;
+  StreamSubscription<User?>? _authSubscription;
+
+  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+
+  Future<void> refreshFavorites() async {
+    try {
+      final favorites = await _database.getFavorites(_uid);
+      if (!isClosed) emit(state.copyWith(favorites: favorites));
+    } catch (_) {}
+  }
   bool _refreshing = false;
 
   Future<void> initialize() async {
     try {
-      final favorites = await _database.getFavorites();
+      final favorites = await _database.getFavorites(_uid);
       if (isClosed) return;
       final cached = await _database.getCachedMeals();
       if (isClosed) return;
@@ -104,7 +120,7 @@ class HomeCubit extends Cubit<HomeState> {
       final fetched = <MealModel>[?meal, ...popular];
       await _database.cacheMeals(fetched);
       if (isClosed) return;
-      final favorites = await _database.getFavorites();
+      final favorites = await _database.getFavorites(_uid);
       if (isClosed) return;
 
       final selectedMeal = meal ?? state.mealOfDay;
@@ -133,7 +149,7 @@ class HomeCubit extends Cubit<HomeState> {
       try {
         cached = await _database.getCachedMeals();
         if (isClosed) return;
-        favorites = await _database.getFavorites();
+        favorites = await _database.getFavorites(_uid);
       } catch (_) {}
       if (isClosed) return;
       emit(
@@ -250,10 +266,10 @@ class HomeCubit extends Cubit<HomeState> {
         }
       }
 
-      await _database.setFavorite(toSave, !currentlyFavorite);
+      await _database.setFavorite(_uid, toSave, !currentlyFavorite);
       await _database.cacheMeals([toSave]);
       if (isClosed) return;
-      final favorites = await _database.getFavorites();
+      final favorites = await _database.getFavorites(_uid);
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -275,6 +291,7 @@ class HomeCubit extends Cubit<HomeState> {
   @override
   Future<void> close() async {
     await _subscription?.cancel();
+    await _authSubscription?.cancel();
 
     if (_ownsApi) {
       _api.dispose();

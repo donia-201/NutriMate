@@ -10,6 +10,7 @@ Future<bool?> showAddToPlannerSheet(
   MealModel meal, {
   DateTime? initialDay,
   PlannerCubit? cubit,
+  int calories = 0,
 }) {
   final plannerCubit = cubit ?? PlannerCubit();
   return showModalBottomSheet<bool>(
@@ -22,6 +23,7 @@ Future<bool?> showAddToPlannerSheet(
       initialDay: initialDay ?? DateTime.now(),
       cubit: plannerCubit,
       ownsCubit: cubit == null,
+      calories: calories,
     ),
   );
 }
@@ -31,12 +33,14 @@ class _PlannerSheet extends StatefulWidget {
   final DateTime initialDay;
   final PlannerCubit cubit;
   final bool ownsCubit;
+  final int calories;
 
   const _PlannerSheet({
     required this.meal,
     required this.initialDay,
     required this.cubit,
     required this.ownsCubit,
+    required this.calories,
   });
 
   @override
@@ -272,7 +276,12 @@ class _PlannerSheetState extends State<_PlannerSheet> {
       if (replace != true || !mounted) return;
     }
     setState(() => _isSaving = true);
-    await widget.cubit.saveMeal(meal: widget.meal, day: _day, slot: _slot);
+    await widget.cubit.saveMeal(
+      meal: widget.meal,
+      day: _day,
+      slot: _slot,
+      calories: widget.calories,
+    );
     if (!mounted) return;
     if (widget.cubit.state.errorMessage != null) {
       setState(() => _isSaving = false);

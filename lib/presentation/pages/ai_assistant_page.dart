@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../data/dataresource/local_database_service.dart';
 import '../../data/models/ai_recipe_model.dart';
@@ -30,7 +31,14 @@ enum _AiView {
 }
 
 class AiAssistantPage extends StatefulWidget {
-  const AiAssistantPage({super.key});
+  final String? initialMealDescription;
+  final AiAssistantMode initialMode;
+
+  const AiAssistantPage({
+    super.key,
+    this.initialMealDescription,
+    this.initialMode = AiAssistantMode.mealAnalysis,
+  });
 
   @override
   State<AiAssistantPage> createState() => _AiAssistantPageState();
@@ -64,7 +72,15 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   @override
   void initState() {
     super.initState();
+    _selectedMode = widget.initialMode;
+    _mealController.text = widget.initialMealDescription ?? '';
     _loadSavedIds();
+    if ((widget.initialMealDescription ?? '').trim().isNotEmpty &&
+        widget.initialMode == AiAssistantMode.healthyAlternatives) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _submitRequest();
+      });
+    }
   }
 
   @override
@@ -258,7 +274,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   Future<void> _loadSavedIds() async {
     try {
-      final favorites = await LocalDatabaseService.instance.getFavorites();
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+      final favorites = await LocalDatabaseService.instance.getFavorites(uid);
       if (!mounted) return;
 
       setState(() {
@@ -321,6 +338,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
     try {
       await LocalDatabaseService.instance.setFavorite(
+        FirebaseAuth.instance.currentUser?.uid ?? 'guest',
         _toMeal(recipe),
         !wasSaved,
       );

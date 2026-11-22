@@ -1,12 +1,24 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/network/ai_api_config.dart';
+import '../../core/network/dio_client.dart';
+import '../../data/dataresource/ai_remote_darasource.dart';
+import '../../data/dataresource/local_database_service.dart';
 import '../../data/dataresource/meal_api_services.dart';
 import '../../data/models/meal_model.dart';
+import '../../data/models/nutrition_model.dart';
+import '../../data/repositories/ai_repository.dart';
+import '../../data/repositories/nutrition_repository.dart';
+import '../cubit/ai_chat_cubit.dart';
+import 'ai_assistant_page.dart';
 import 'add_to_planner_sheet.dart';
 
 class MealDetailsPage extends StatefulWidget {
   final MealModel meal;
+
   const MealDetailsPage({super.key, required this.meal});
 
   @override
@@ -14,83 +26,457 @@ class MealDetailsPage extends StatefulWidget {
 }
 
 class _MealDetailsPageState extends State<MealDetailsPage> {
-  final _api = MealApiService();
-  late Future<MealModel> _details;
+  final MealApiService _api = MealApiService();
+  final NutritionRepository _nutritionRepository = NutritionRepository();
+  final LocalDatabaseService _database = LocalDatabaseService.instance;
+
+  late MealModel _meal;
+  NutritionModel? _nutrition;
+  bool _isLoading = true;
+  bool _isFavorite = false;
+  bool _isSavingFavorite = false;
+  bool _isLogging = false;
+  String? _error;
+  String? _detailsNotice;
+
+  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? 'guest';
 
   @override
   void initState() {
     super.initState();
-    _details = _loadDetails();
+    _meal = widget.meal;
+    _loadMeal();
   }
 
-  Future<MealModel> _loadDetails() async {
-    if (widget.meal.detailsLoaded) return widget.meal;
-    final details = await _api.getMealById(widget.meal.idMeal);
-    return details ?? widget.meal;
+  Future<void> _loadMeal() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _detailsNotice = null;
+    });
+
+    try {
+      if (!_meal.detailsLoaded || _meal.ingredients.isEmpty) {
+        try {
+          final details = await _api.getMealById(_meal.idMeal);
+          if (details != null) {
+            _meal = _meal.mergeDetails(details);
+            await _database.cacheMeals([_meal]);
+          } else {
+            _detailsNotice = 'Some recipe details could not be loaded.';
+          }
+        } catch (_) {
+          _detailsNotice = 'Some recipe details could not be loaded. Check your connection and retry.';
+        }
+      }
+
+      final favorite = await _database.isFavorite(_uid, _meal.idMeal);
+      NutritionModel? nutrition;
+      if (_meal.ingredients.isNotEmpty) {
+        try {
+          nutrition = await _nutritionRepository.calculateMealNutrition(
+            _meal.ingredients,
+          );
+        } catch (_) {
+          // Nutrition is an estimate and may be unavailable for some ingredients.
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = favorite;
+        _nutrition = nutrition;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isSavingFavorite) return;
+    setState(() => _isSavingFavorite = true);
+    try {
+      await _database.setFavorite(_uid, _meal, !_isFavorite);
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = !_isFavorite;
+        _isSavingFavorite = false;
+      });
+      _message(_isFavorite ? 'Added to your favorites.' : 'Removed from favorites.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSavingFavorite = false);
+      _message('Could not update favorites. Please try again.');
+    }
+  }
+
+  Future<void> _logAsEaten() async {
+    if (_isLogging) return;
+    setState(() => _isLogging = true);
+    try {
+      await _database.logMeal(_uid, _meal, nutrition: _nutrition);
+      if (!mounted) return;
+      setState(() => _isLogging = false);
+      _message('Meal logged as eaten.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLogging = false);
+      _message('Could not log this meal. Please try again.');
+    }
+  }
+
+  void _message(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openHealthierAlternatives() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) {
+            final aiDioClient = DioClient(
+              baseUrl: AiApiConfig.baseUrl.isEmpty
+                  ? 'https://invalid.invalid/'
+                  : AiApiConfig.baseUrl,
+            );
+            final mealApiService = MealApiService();
+            final dataSource = AiRemoteDataSource(
+              aiDioClient: aiDioClient,
+              mealApiService: mealApiService,
+            );
+            return AiChatCubit(
+              repository: AiRepository(dataSource: dataSource),
+            );
+          },
+          child: AiAssistantPage(
+            initialMealDescription: _meal.strMeal,
+            initialMode: AiAssistantMode.healthyAlternatives,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
     _api.dispose();
+    _nutritionRepository.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Meal Details')),
-    body: FutureBuilder<MealModel>(
-      future: _details,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Could not load this recipe.'));
-        }
-        final meal = snapshot.data ?? widget.meal;
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Hero(
-              tag: 'meal-${meal.idMeal}',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-                child: Image.network(
-                  meal.strMealThumb,
-                  height: 240,
-                  fit: BoxFit.cover,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      appBar: AppBar(title: const Text('Recipe')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError(colors)
+              : _buildDetails(colors),
+    );
+  }
+
+  Widget _buildError(ColorScheme colors) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.restaurant_menu, size: 42),
+              const SizedBox(height: 12),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _loadMeal,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildDetails(ColorScheme colors) => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.network(
+              _meal.strMealThumb,
+              height: 245,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                height: 245,
+                color: colors.surfaceContainerHighest,
+                child: const Icon(Icons.restaurant, size: 54),
+              ),
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -28),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.07),
+                    blurRadius: 18,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _meal.strMeal,
+                          style: AppTheme.titleBold.copyWith(
+                            color: colors.onSurface,
+                            fontSize: 23,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          [
+                            _meal.strCategory ?? 'Recipe',
+                            _meal.strArea ?? 'International',
+                          ].join(' • '),
+                          style: AppTheme.small.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _isSavingFavorite ? null : _toggleFavorite,
+                    icon: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: _isFavorite ? Colors.redAccent : colors.primary,
+                      size: 29,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_detailsNotice != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                _detailsNotice!,
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+              ),
+            ),
+          Transform.translate(
+            offset: const Offset(0, -18),
+            child: _nutritionCard(colors),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            height: 54,
+            child: FilledButton(
+              onPressed: () async {
+                await showAddToPlannerSheet(
+                  context,
+                  _meal,
+                  calories: _nutrition?.calories?.round() ?? 0,
+                );
+              },
+              child: const Text('Add to Planner'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isSavingFavorite ? null : _toggleFavorite,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                  ),
+                  child: Text(
+                    _isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isLogging ? null : _logAsEaten,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                  ),
+                  child: Text(_isLogging ? 'Logging...' : 'Log as eaten'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 52,
+            child: FilledButton.tonalIcon(
+              onPressed: _openHealthierAlternatives,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Make it healthier with AI'),
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (_meal.ingredients.isNotEmpty) ...[
+            Text('Ingredients', style: AppTheme.titleBold.copyWith(fontSize: 19)),
+            const SizedBox(height: 10),
+            ..._meal.ingredients.map(
+              (ingredient) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, size: 7, color: colors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(ingredient.name)),
+                    Text(
+                      ingredient.measure,
+                      style: TextStyle(color: colors.onSurfaceVariant),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Text(
-              meal.strMeal,
-              style: AppTheme.titleBold.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${meal.strCategory ?? 'Meal'} â€¢ ${meal.strArea ?? 'International'}',
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => showAddToPlannerSheet(context, meal),
-                icon: const Icon(Icons.event_note_outlined),
-                label: const Text('Add to Planner'),
-              ),
-            ),
-            if (meal.strInstructions != null) ...[
-              const SizedBox(height: 24),
-              Text('Instructions', style: AppTheme.label),
-              const SizedBox(height: 8),
-              Text(meal.strInstructions!),
-            ],
+            const SizedBox(height: 22),
           ],
-        );
-      },
-    ),
-  );
+          if ((_meal.strInstructions ?? '').trim().isNotEmpty) ...[
+            Text('Cooking steps', style: AppTheme.titleBold.copyWith(fontSize: 19)),
+            const SizedBox(height: 10),
+            Text(
+              _meal.strInstructions!,
+              style: TextStyle(
+                height: 1.55,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      );
+
+  Widget _nutritionCard(ColorScheme colors) {
+    final nutrition = _nutrition;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Estimated • whole recipe',
+            style: AppTheme.titleBold.copyWith(
+              fontSize: 17,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (nutrition == null)
+            Text(
+              'Nutrition information is currently unavailable.',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            )
+          else
+            Row(
+              children: [
+                _macro(colors, 'Calories', nutrition.calories, 'kcal'),
+                _macro(colors, 'Protein', nutrition.protein, 'g'),
+                _macro(colors, 'Carbs', nutrition.carbohydrates, 'g'),
+                _macro(colors, 'Fat', nutrition.fat, 'g'),
+              ],
+            ),
+          const SizedBox(height: 12),
+          Text(
+            nutrition?.disclaimer ??
+                'Nutrition values are estimates, not a lab measurement.',
+            style: AppTheme.small.copyWith(
+              color: colors.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _macro(ColorScheme colors, String label, double? value, String unit) {
+    final display = value == null
+        ? '—'
+        : (value == value.roundToDouble()
+            ? value.toStringAsFixed(0)
+            : value.toStringAsFixed(1));
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: colors.outlineVariant,
+                width: 3,
+              ),
+            ),
+            child: FittedBox(
+              child: Text(
+                '$display${label == 'Calories' ? '' : unit}',
+                style: TextStyle(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label == 'Calories' ? 'kcal' : unit,
+            style: TextStyle(
+              fontSize: 10,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
