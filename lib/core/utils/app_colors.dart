@@ -20,4 +20,14 @@ import 'package:flutter/material.dart';
   
   static Color primaryGreenwithValues({required double opacity}) =>
       primaryGreen.withValues( alpha : opacity);
+
+      // Nutrition Macro Colors - Light Theme
+  static const Color macroProtein = Color(0xFF9AAA91);
+  static const Color macroCarbs = Color(0xFFC29B72);
+  static const Color macroFat = Color(0xFF6F8B78);
+
+  // Nutrition Macro Colors - Dark Theme
+  static const Color darkMacroProtein = Color(0xFFB6C7A9);
+  static const Color darkMacroCarbs = Color(0xFFD6B18A);
+  static const Color darkMacroFat = Color(0xFF8FB39A);
  }

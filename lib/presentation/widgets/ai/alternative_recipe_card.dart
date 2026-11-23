@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/app_colors.dart';
 import '../../../data/models/healthy_alternative.dart';
 
 String _recipeMeta(HealthyAlternative alternative) {
@@ -13,15 +12,15 @@ String _recipeMeta(HealthyAlternative alternative) {
       .join(' · ');
 }
 
-Widget _recipeImage(String? url, {required double height}) {
+Widget _recipeImage(BuildContext context, String? url, {required double height}) {
   Widget placeholder() {
     return Container(
       height: height,
       width: double.infinity,
-      color: const Color(0xFFEFE2CD),
-      child: const Icon(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(
         Icons.restaurant_outlined,
-        color: AppColors.textHint,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         size: 34,
       ),
     );
@@ -62,7 +61,7 @@ class AlternativeRecipeCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
       clipBehavior: Clip.antiAlias,
@@ -71,7 +70,7 @@ class AlternativeRecipeCard extends StatelessWidget {
         children: [
           Stack(
             children: [
-              _recipeImage(recipe.imageUrl, height: 150),
+              _recipeImage(context, recipe.imageUrl, height: 150),
               Positioned(
                 top: 10,
                 right: 10,
@@ -79,11 +78,11 @@ class AlternativeRecipeCard extends StatelessWidget {
                   onTap: onToggleSaved,
                   child: CircleAvatar(
                     radius: 17,
-                    backgroundColor: Colors.white.withValues(alpha: 0.92),
+                    backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
                     child: Icon(
                       isSaved ? Icons.favorite : Icons.favorite_border,
                       size: 19,
-                      color: AppColors.accentHeart,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                 ),
@@ -97,19 +96,19 @@ class AlternativeRecipeCard extends StatelessWidget {
               children: [
                 Text(
                   recipe.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 if (meta.isNotEmpty) ...[
                   const SizedBox(height: 3),
                   Text(
                     meta,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textMuted,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -117,10 +116,10 @@ class AlternativeRecipeCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     alternative.reason.trim(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       height: 1.45,
-                      color: AppColors.textMuted,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -132,15 +131,15 @@ class AlternativeRecipeCard extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withValues(alpha: 0.16),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       summary,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -152,8 +151,8 @@ class AlternativeRecipeCard extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: onViewRecipe,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          foregroundColor: AppColors.buttonText,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -174,8 +173,8 @@ class AlternativeRecipeCard extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: onToggleSaved,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textDark,
-                          side: const BorderSide(color: AppColors.primaryGreen),
+                          foregroundColor: Theme.of(context).colorScheme.onSurface,
+                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22),
@@ -217,8 +216,8 @@ Future<void> showRecipeDetailsSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.background,
-    shape: const RoundedRectangleBorder(
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
     ),
     builder: (sheetContext) {
@@ -237,7 +236,7 @@ Future<void> showRecipeDetailsSheet(
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.dotInactive,
+                    color: Theme.of(sheetContext).colorScheme.outlineVariant,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -245,24 +244,24 @@ Future<void> showRecipeDetailsSheet(
               const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: _recipeImage(recipe.imageUrl, height: 190),
+                child: _recipeImage(sheetContext, recipe.imageUrl, height: 190),
               ),
               const SizedBox(height: 16),
               Text(
                 recipe.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
+                  color: Theme.of(sheetContext).colorScheme.onSurface,
                 ),
               ),
               if (meta.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
                   meta,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textMuted,
+                    color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -272,27 +271,27 @@ Future<void> showRecipeDetailsSheet(
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: Theme.of(sheetContext).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     alternative.reason.trim(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       height: 1.5,
-                      color: AppColors.textMuted,
+                      color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
               ],
               if (steps.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Instructions',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: Theme.of(sheetContext).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -301,10 +300,10 @@ Future<void> showRecipeDetailsSheet(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                       step,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.55,
-                        color: AppColors.textDark,
+                        color: Theme.of(sheetContext).colorScheme.onSurface,
                       ),
                     ),
                   ),

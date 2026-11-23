@@ -15,26 +15,36 @@ class PlannerPage extends StatelessWidget {
   final PlannerCubit? cubit;
   final bool embedded;
 
-  const PlannerPage({super.key, this.cubit, this.embedded = false});
+  /// Called by the back arrow. When the planner is a tab inside the home
+  /// shell there is nothing to pop, so the shell passes its own action.
+  final VoidCallback? onBack;
+
+  const PlannerPage({
+    super.key,
+    this.cubit,
+    this.embedded = false,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (cubit != null) {
       return BlocProvider.value(
         value: cubit!,
-        child: _PlannerView(embedded: embedded),
+        child: _PlannerView(embedded: embedded, onBack: onBack),
       );
     }
     return BlocProvider(
       create: (_) => PlannerCubit()..initialize(),
-      child: _PlannerView(embedded: embedded),
+      child: _PlannerView(embedded: embedded, onBack: onBack),
     );
   }
 }
 
 class _PlannerView extends StatelessWidget {
   final bool embedded;
-  const _PlannerView({required this.embedded});
+  final VoidCallback? onBack;
+  const _PlannerView({required this.embedded, this.onBack});
 
   @override
   Widget build(BuildContext context) => BlocBuilder<PlannerCubit, PlannerState>(
@@ -88,7 +98,13 @@ class _PlannerView extends StatelessWidget {
   Widget _header(BuildContext context, PlannerState state) => Row(
     children: [
       IconButton(
-        onPressed: () => Navigator.maybePop(context),
+        onPressed: () {
+          if (onBack != null) {
+            onBack!();
+          } else {
+            Navigator.maybePop(context);
+          }
+        },
         icon: const Icon(Icons.arrow_back),
       ),
       const SizedBox(width: 4),

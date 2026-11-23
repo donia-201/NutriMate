@@ -63,6 +63,23 @@ class NutriMateApp extends StatelessWidget {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: profile.themeMode,
+        builder: (context, child) {
+          // Keep the status bar and navigation bar icons readable in both modes.
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final icons = isDark ? Brightness.light : Brightness.dark;
+
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: icons,
+              statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarIconBrightness: icons,
+              systemNavigationBarContrastEnforced: false,
+            ),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: SplashPage(
           firebaseInitializationError: firebaseInitializationError,
         ),
