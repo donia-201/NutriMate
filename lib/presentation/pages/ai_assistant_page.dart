@@ -33,7 +33,14 @@ enum _AiView {
 }
 
 class AiAssistantPage extends StatefulWidget {
-  const AiAssistantPage({super.key});
+  final String? initialMealDescription;
+  final AiAssistantMode initialMode;
+
+  const AiAssistantPage({
+    super.key,
+    this.initialMealDescription,
+    this.initialMode = AiAssistantMode.mealAnalysis,
+  });
 
   @override
   State<AiAssistantPage> createState() => _AiAssistantPageState();

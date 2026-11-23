@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/dataresource/local_database_service.dart';
@@ -27,8 +28,7 @@ class HomeCubit extends Cubit<HomeState> {
         _ownsApi = apiService == null,
         _ownsNutritionRepository = nutritionRepository == null,
         super(const HomeState()) {
-    // المفضلة بتيجي من FavoritesCubit (per-user). أي تغيير فيها، سواء من
-    // الهوم أو من شاشة الـ Favorites أو من تغيير الحساب، بيوصل هنا لوحده.
+ 
     _favoritesSub = _favorites.stream.listen((FavoritesState s) {
       if (isClosed) return;
       emit(state.copyWith(favorites: s.meals));
@@ -47,6 +47,16 @@ class HomeCubit extends Cubit<HomeState> {
   final bool _ownsNutritionRepository;
 
   StreamSubscription<List<ConnectivityResult>>? _subscription;
+  StreamSubscription<User?>? _authSubscription;
+
+  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+
+  Future<void> refreshFavorites() async {
+    try {
+      final favorites = await _database.getFavorites(_uid);
+      if (!isClosed) emit(state.copyWith(favorites: favorites));
+    } catch (_) {}
+  }
   bool _refreshing = false;
 
   Future<void> initialize() async {
@@ -277,7 +287,6 @@ class HomeCubit extends Cubit<HomeState> {
       await _database.cacheMeals([toSave]);
       if (isClosed) return;
 
-      // القايمة نفسها اتحدّثت من الـ listener فوق.
       emit(
         state.copyWith(
           favorites: _favorites.state.meals,
@@ -298,6 +307,7 @@ class HomeCubit extends Cubit<HomeState> {
   @override
   Future<void> close() async {
     await _subscription?.cancel();
+    await _authSubscription?.cancel();
     await _favoritesSub?.cancel();
 
     if (_ownsFavorites) {

@@ -13,10 +13,11 @@ import '../cubit/profile_cubit.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import '../widgets/bottom_nav.dart';
-//import 'insights_page.dart';
+import 'insights_page.dart';
 import 'planner_page.dart';
 import 'profile_screen.dart';
-import 'search_page.dart';
+import './search_page.dart';
+import 'meal_details_page.dart';
 
 class HomePage extends StatelessWidget {
   final String userName;
@@ -485,18 +486,22 @@ class _HomeViewState extends State<_HomeView> {
                               ),
                               child: _popularTile(
                                 meal,
-                                state.favoriteIds
-                                    .contains(
-                                    meal.idMeal),
-                                    () async {
+state.favoriteIds.contains(meal.idMeal),
+                                () async {
                                   if (!await requireSignedIn(
                                     context,
                                     feature: 'Saving favorites',
                                   )) {
                                     return;
                                   }
-                                  cubit.toggleFavorite(meal);
+
+                                  await cubit.toggleFavorite(meal);
                                 },
+                                () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => MealDetailsPage(meal: meal),
+                                  ),
+                                ).then((_) => cubit.refreshFavorites()),
                               ),
                             ),
                           ),
@@ -689,11 +694,11 @@ class _HomeViewState extends State<_HomeView> {
                 ),
 
                 // =========================
-                // 4 - PLACEHOLDER
+                // 4 - INSIGHTS
                 // =========================
-                const Scaffold(
-                  body: Center(
-                    child: Text('Coming soon'),
+                InsightsPage(
+                  key: ValueKey(
+                    _currentBottomNavIndex == 4 ? 'insights-active' : 'insights-inactive',
                   ),
                 ),
               ],
@@ -766,7 +771,12 @@ class _HomeViewState extends State<_HomeView> {
     final calories =
         state.mealNutrition?.calories;
 
-    return Container(
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => MealDetailsPage(meal: meal)),
+      ).then((_) => cubit.refreshFavorites()),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
       decoration: BoxDecoration(
         color: c.surface,
         borderRadius: BorderRadius.circular(24),
@@ -884,6 +894,7 @@ class _HomeViewState extends State<_HomeView> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1097,111 +1108,88 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Widget _popularTile(
-      MealModel meal,
-      bool fav,
-      VoidCallback onTap,
-      ) {
-    final c =
-        Theme.of(context).colorScheme;
+    MealModel meal,
+    bool fav,
+    VoidCallback onTap,
+    VoidCallback onOpen,
+  ) {
+    final c = Theme.of(context).colorScheme;
 
-    return Container(
-      padding:
-      const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius:
-        BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius:
-            BorderRadius.circular(14),
-            child: Image.network(
-              meal.strMealThumb,
-              width: 65,
-              height: 65,
-              fit: BoxFit.cover,
-              errorBuilder:
-                  (_, _, _) =>
-                  _imageFallback(
-                    width: 65,
-                    height: 65,
-                  ),
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment
-                  .start,
-              children: [
-                Text(
-                  meal.strMeal,
-                  maxLines: 2,
-                  overflow:
-                  TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight:
-                    FontWeight.w700,
-                    fontSize: 14,
-                    color:
-                    c.onSurface,
-                  ),
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.network(
+                meal.strMealThumb,
+                width: 65,
+                height: 65,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _imageFallback(
+                  width: 65,
+                  height: 65,
                 ),
-
-                const SizedBox(height: 2),
-
-                Text(
-                  '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
-                  maxLines: 1,
-                  overflow:
-                  TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                    c.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.strMeal,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: c.onSurface,
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 2),
-
-                Text(
-                  'Nutrition data unavailable',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color:
-                    c.onSurfaceVariant,
+                  const SizedBox(height: 2),
+                  Text(
+                    '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: c.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Open recipe details',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: c.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-
-          IconButton(
-            onPressed: onTap,
-            padding:
-            EdgeInsets.zero,
-            constraints:
-            const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
+            IconButton(
+              onPressed: onTap,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
+              icon: Icon(
+                fav ? Icons.favorite : Icons.favorite_border,
+                color: fav ? AppColors.accentHeart : c.onSurfaceVariant,
+                size: 20,
+              ),
             ),
-            icon: Icon(
-              fav
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: fav
-                  ? AppColors
-                  .accentHeart
-                  : c.onSurfaceVariant,
-              size: 20,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

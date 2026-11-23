@@ -40,8 +40,7 @@ void main() {
     connectivity = _MockConnectivity();
     auth = _MockFirebaseAuth();
 
-    // مفيش يوزر داخل، ومفيش أحداث auth. كده الـ FavoritesCubit مش بيلمس
-    // Firebase الحقيقي ولا الـ database.
+ 
     when(() => auth.currentUser).thenReturn(null);
     when(
           () => auth.authStateChanges(),
@@ -55,7 +54,7 @@ void main() {
   });
 
   test('initialize emits error instead of remaining loading', () async {
-    // المفضلة بقت بتيجي من FavoritesCubit، فالفشل بيجي من قراءة الـ cache.
+
     when(() => database.getCachedMeals(limit: any(named: 'limit'))).thenThrow(
       const LocalDatabaseException(
         type: LocalDatabaseErrorType.read,
@@ -84,6 +83,8 @@ void main() {
         strMeal: 'Soup',
         strMealThumb: 'https://example.com/soup.jpg',
       );
+      when(() => database.getFavorites('test_user_123')).thenAnswer((_) async => const []);
+
       when(
             () => database.getCachedMeals(limit: any(named: 'limit')),
       ).thenAnswer((_) async => const []);
@@ -117,7 +118,7 @@ void main() {
         cubit.state.favoriteDetailErrorMessage,
         contains('Could not load recipe details'),
       );
-      // setFavorite بقت (uid, meal, favorite).
+
       verifyNever(() => database.setFavorite(any(), any(), any()));
       await cubit.close();
     },

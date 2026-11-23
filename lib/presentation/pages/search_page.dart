@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_theme.dart';
 import '../../data/models/meal_model.dart';
 import '../cubit/search_cubit.dart';
+import '../cubit/home_cubit.dart';
 import '../cubit/search_state.dart';
 import 'meal_details_page.dart';
 
@@ -476,6 +477,8 @@ class _SearchViewState extends State<_SearchView> {
         transitionDuration: const Duration(milliseconds: 260),
         reverseTransitionDuration: const Duration(milliseconds: 220),
       ),
-    );
+    ).then((_) {
+      if (mounted) context.read<HomeCubit>().refreshFavorites();
+    });
   }
 }

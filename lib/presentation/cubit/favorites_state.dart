@@ -1,7 +1,6 @@
 import '../../data/models/meal_model.dart';
 
 class FavoritesState {
-  /// الـ uid اللي الـ meals دي بتاعته (null = مفيش يوزر داخل).
   final String? uid;
   final List<MealModel> meals;
   final bool isLoading;
