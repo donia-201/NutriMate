@@ -48,7 +48,7 @@ class _SearchViewState extends State<_SearchView> {
   final _controller = TextEditingController();
   final _searchFocus = FocusNode();
   SearchCubit? _cubit;
-  bool _sortAscending = true;
+  final bool _sortAscending = true;
 
   static const _categories = <List<String>>[
     ['Beef', 'https://www.themealdb.com/images/category/beef.png'],

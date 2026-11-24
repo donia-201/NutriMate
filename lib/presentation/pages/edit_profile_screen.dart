@@ -197,8 +197,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   final n = int.tryParse(v?.trim() ?? '');
-                  if (n == null || n < 500 || n > 10000)
+                  if (n == null || n < 500 || n > 10000) {
                     return 'Enter a number between 500 and 10000';
+                  }
                   return null;
                 },
               ),
