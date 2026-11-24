@@ -501,6 +501,19 @@ class LocalDatabaseService {
     return rows.map(PlannedMeal.fromDbMap).toList();
   }
 
+  Future<List<PlannedMeal>> getUpcomingPlannedMeals(String uid) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final rows = await (await database).query(
+      'planned_meals',
+      where: 'uid = ? AND day >= ?',
+      whereArgs: [uid, _dayKey(today)],
+      orderBy: 'day ASC, slotOrder ASC',
+    );
+
+    return rows.map(PlannedMeal.fromDbMap).toList();
+  }
+
   Future<void> _createPlannedMealsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS planned_meals (

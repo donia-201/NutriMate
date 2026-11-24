@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/app_widgets.dart';
 import '../../core/guest_guard.dart';
 import '../../data/models/ai_recipe_model.dart';
 import '../../data/models/healthy_alternative.dart';
@@ -68,6 +69,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   bool _showAnalysisAgain = false;
 
   Set<String> _savedIds = {};
+  final Set<String> _pendingFavoriteIds = {};
   StreamSubscription<dynamic>? _favoritesSub;
 
   bool get _isMealAnalysis => _selectedMode == AiAssistantMode.mealAnalysis;
@@ -301,44 +303,48 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     );
   }
 
-  Future<bool> _confirmRemove() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove from favorites?'),
-        content: const Text('This recipe will be removed from your favorites.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _toggleSaved(AiRecipeModel recipe) async {
+    if (!_pendingFavoriteIds.add(recipe.id)) return;
+    try {
+      if (!await requireSignedIn(context, feature: 'Saving favorites')) return;
+      if (!mounted) return;
 
-    return confirmed ?? false;
+      final favorites = context.read<FavoritesCubit>();
+      final isFavorite = favorites.isFavorite(recipe.id);
+      if (isFavorite) {
+        final confirmed = await showActionConfirmationDialog(
+          context,
+          title: 'Remove from favorites?',
+          message: 'Remove ${recipe.name} from your favorites?',
+          confirmLabel: 'Remove',
+          icon: Icons.favorite_border,
+          accentColor: Theme.of(context).colorScheme.error,
+        );
+        if (!confirmed || !mounted) return;
+      }
+
+      final ok = await favorites.toggle(_toMeal(recipe));
+      if (ok || !mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update your favorites.')),
+      );
+    } finally {
+      _pendingFavoriteIds.remove(recipe.id);
+    }
   }
 
-  Future<void> _toggleSaved(AiRecipeModel recipe) async {
-    if (!await requireSignedIn(context, feature: 'Saving favorites')) return;
-    if (!mounted) return;
-
-    final favorites = context.read<FavoritesCubit>();
-    final wasSaved = favorites.isFavorite(recipe.id);
-
-    if (wasSaved && !await _confirmRemove()) return;
-    if (!mounted) return;
-
-    final ok = await favorites.toggle(_toMeal(recipe));
-    if (ok || !mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not update your favorites.')),
+  Future<void> _confirmResetToInput() async {
+    final confirmed = await showActionConfirmationDialog(
+      context,
+      title: 'Start over?',
+      message: 'Clear the current meal analysis and start again?',
+      confirmLabel: 'Start over',
+      icon: Icons.refresh,
+      accentColor: Theme.of(context).colorScheme.error,
     );
+    if (!confirmed || !mounted) return;
+    _resetToInput();
   }
 
   // ---------------------------------------------------------------------------
@@ -377,7 +383,11 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           child: Scaffold(
             // Background comes from the Theme (Light / Dark).
             appBar: _buildAppBar(view, state),
-            body: SafeArea(top: false, child: _buildBody(view, state)),
+            body: SafeArea(
+              top: false,
+              bottom: keyboardOpen && !widget.embedded,
+              child: _buildBody(view, state),
+            ),
             // Hidden while typing so it does not squeeze the input.
             bottomNavigationBar: widget.embedded || keyboardOpen
                 ? null
@@ -721,7 +731,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
               onPressed: _showHealthierRecipes,
             ),
             TextButton(
-              onPressed: _resetToInput,
+              onPressed: _confirmResetToInput,
               child: Text(
                 'Analyze another meal',
                 style: TextStyle(
@@ -773,7 +783,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         const SizedBox(height: 4),
         Center(
           child: TextButton(
-            onPressed: _resetToInput,
+            onPressed: _confirmResetToInput,
             child: Text(
               'Start over',
               style: TextStyle(

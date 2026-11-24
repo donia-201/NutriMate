@@ -45,8 +45,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _newPassword.dispose();
     _confirmPassword.dispose();
     super.dispose();
-
   }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -69,16 +69,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile changes saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile changes saved')));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
     }
   }
 
@@ -110,95 +110,112 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Row(children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: c.surface,
-                child: Icon(Icons.person_outline, size: 32, color: c.onSurface),
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: c.surface,
+                    child: Icon(
+                      Icons.person_outline,
+                      size: 32,
+                      color: c.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Choose from gallery',
+                      outlined: true,
+                      onPressed: () {}, // محتاجة image_picker، نضيفها بعدين
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppButton(
-                  label: 'Choose from gallery',
-                  outlined: true,
-                  onPressed: () {}, // محتاجة image_picker، نضيفها بعدين
+              const SizedBox(height: 20),
+              AppTextField(
+                label: 'Name',
+                controller: _name,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please enter your name'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              if (_canChangePassword) ...[
+                AppTextField(
+                  label: 'Current password',
+                  controller: _currentPassword,
+                  isPassword: true,
+                  validator: (v) =>
+                      _newPassword.text.isNotEmpty && (v == null || v.isEmpty)
+                      ? 'Enter your current password to change it'
+                      : null,
                 ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'New password (optional)',
+                  controller: _newPassword,
+                  isPassword: true,
+                  validator: (v) => (v != null && v.isNotEmpty && v.length < 6)
+                      ? 'Password must be at least 6 characters'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'Confirm new password',
+                  controller: _confirmPassword,
+                  isPassword: true,
+                  validator: (v) =>
+                      v != _newPassword.text ? 'Passwords do not match' : null,
+                ),
+              ],
+              const SizedBox(height: 16),
+              Text(
+                'Dietary restrictions',
+                style: AppTheme.label.copyWith(color: c.onSurface),
               ),
-            ]),
-            const SizedBox(height: 20),
-            AppTextField(
-              label: 'Name',
-              controller: _name,
-              validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Please enter your name' : null,
-            ),
-            const SizedBox(height: 16),
-            if (_canChangePassword) ...[
-              AppTextField(
-                label: 'Current password',
-                controller: _currentPassword,
-                isPassword: true,
-                validator: (v) =>
-                _newPassword.text.isNotEmpty && (v == null || v.isEmpty)
-                    ? 'Enter your current password to change it'
-                    : null,
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _dietary,
+                dropdownColor: c.surface,
+                style: AppTheme.body.copyWith(color: c.onSurface),
+                items: ProfileCubit.dietOptions
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                    .toList(),
+                onChanged: (v) => setState(() => _dietary = v ?? _dietary),
               ),
               const SizedBox(height: 16),
               AppTextField(
-                label: 'New password (optional)',
-                controller: _newPassword,
-                isPassword: true,
-                validator: (v) => (v != null && v.isNotEmpty && v.length < 6)
-                    ? 'Password must be at least 6 characters'
-                    : null,
+                label: 'Daily calorie goal (kcal)',
+                controller: _calories,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final n = int.tryParse(v?.trim() ?? '');
+                  if (n == null || n < 500 || n > 10000)
+                    return 'Enter a number between 500 and 10000';
+                  return null;
+                },
               ),
-              const SizedBox(height: 16),
-              AppTextField(
-                label: 'Confirm new password',
-                controller: _confirmPassword,
-                isPassword: true,
-                validator: (v) =>
-                v != _newPassword.text ? 'Passwords do not match' : null,
+              const SizedBox(height: 24),
+              AppButton(
+                label: 'Save changes',
+                isLoading: _saving,
+                onPressed: _save,
+              ),
+              const SizedBox(height: 12),
+              AppButton(
+                label: 'Cancel',
+                outlined: true,
+                onPressed: _saving ? null : () => Navigator.pop(context),
               ),
             ],
-            const SizedBox(height: 16),
-            Text('Dietary restrictions',
-                style: AppTheme.label.copyWith(color: c.onSurface)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              initialValue: _dietary,
-              dropdownColor: c.surface,
-              style: AppTheme.body.copyWith(color: c.onSurface),
-              items: ProfileCubit.dietOptions
-                  .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                  .toList(),
-              onChanged: (v) => setState(() => _dietary = v ?? _dietary),
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Daily calorie goal (kcal)',
-              controller: _calories,
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < 500 || n > 10000) return 'Enter a number between 500 and 10000';
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            AppButton(label: 'Save changes', isLoading: _saving, onPressed: _save),
-            const SizedBox(height: 12),
-            AppButton(
-              label: 'Cancel',
-              outlined: true,
-              onPressed: _saving ? null : () => Navigator.pop(context),
-            ),
-          ],
+          ),
         ),
       ),
     );

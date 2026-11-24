@@ -58,7 +58,27 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon.png
+  adaptive_icon_background: "#031139"
+  adaptive_icon_foreground: assets/launcher_icon_foreground.png
+  web:
+    generate: true
+    image_path: assets/icon.png
+    background_color: "#031139"
+    theme_color: "#7BA88C"
+  windows:
+    generate: true
+    image_path: assets/icon.png
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: assets/icon.png
 
 
   # The "flutter_lints" package below contains a set of recommended lints to

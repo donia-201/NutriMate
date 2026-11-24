@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nutri_mate/core/app_theme.dart';
+import 'package:nutri_mate/core/app_widgets.dart';
 import 'package:nutri_mate/data/models/meal_model.dart';
 import 'package:nutri_mate/presentation/cubit/favorites_state.dart';
 import 'package:nutri_mate/presentation/pages/meal_details_page.dart';
@@ -29,6 +30,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final c = Theme.of(context).colorScheme;
 
     final content = SafeArea(
+      bottom: !widget.embedded,
       child: BlocBuilder<FavoritesCubit, FavoritesState>(
         builder: (context, state) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,27 +274,6 @@ void _openDetails(BuildContext context, MealModel meal) {
   );
 }
 
-Future<void> _remove(BuildContext context, MealModel meal) async {
-  final cubit = context.read<FavoritesCubit>();
-  final ok = await cubit.toggle(meal);
-  if (!context.mounted) return;
-
-  final messenger = ScaffoldMessenger.of(context);
-  messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        ok
-            ? 'Removed ${meal.strMeal} from favorites'
-            : (cubit.state.errorMessage ?? 'Could not update favorites.'),
-      ),
-      action: ok
-          ? SnackBarAction(label: 'Undo', onPressed: () => cubit.toggle(meal))
-          : null,
-    ),
-  );
-}
-
 class _Thumb extends StatelessWidget {
   final String url;
   final double? width;
@@ -331,14 +312,79 @@ class _Thumb extends StatelessWidget {
   }
 }
 
-class _HeartButton extends StatelessWidget {
+class _HeartButton extends StatefulWidget {
   final MealModel meal;
   const _HeartButton({required this.meal});
 
   @override
+  State<_HeartButton> createState() => _HeartButtonState();
+}
+
+class _HeartButtonState extends State<_HeartButton> {
+  bool _isRemoving = false;
+
+  Future<void> _remove() async {
+    if (_isRemoving) return;
+    setState(() => _isRemoving = true);
+    try {
+      final cubit = context.read<FavoritesCubit>();
+      final confirmed = await showActionConfirmationDialog(
+        context,
+        title: 'Remove from favorites?',
+        message: 'Remove ${widget.meal.strMeal} from your favorites?',
+        confirmLabel: 'Remove',
+        icon: Icons.favorite_border,
+        accentColor: Theme.of(context).colorScheme.error,
+      );
+      if (!confirmed || !mounted) return;
+
+      final ok = await cubit.toggle(widget.meal);
+      if (!mounted) return;
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Removed ${widget.meal.strMeal} from favorites'
+                : (cubit.state.errorMessage ?? 'Could not update favorites.'),
+          ),
+          action: ok
+              ? SnackBarAction(label: 'Undo', onPressed: _restore)
+              : null,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRemoving = false);
+    }
+  }
+
+  Future<void> _restore() async {
+    if (!mounted || _isRemoving) return;
+    setState(() => _isRemoving = true);
+    try {
+      final cubit = context.read<FavoritesCubit>();
+      final ok = await cubit.toggle(widget.meal);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'Added ${widget.meal.strMeal} back to favorites'
+                : (cubit.state.errorMessage ?? 'Could not update favorites.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRemoving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => IconButton(
     tooltip: 'Remove from favorites',
-    onPressed: () => _remove(context, meal),
+    onPressed: _isRemoving ? null : _remove,
     icon: const Icon(Icons.favorite, color: AppColors.heart, size: 28),
   );
 }

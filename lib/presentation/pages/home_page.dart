@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/app_theme.dart' hide AppColors;
+import '../../core/app_widgets.dart';
 import '../../core/utils/app_colors.dart';
 import '../../data/models/meal_model.dart';
 import '../../core/guest_guard.dart';
@@ -45,11 +46,6 @@ class HomePage extends StatelessWidget {
               ..initialize(),
       ),
       BlocProvider(create: (_) => SearchCubit()),
-      BlocProvider(
-        create: (context) =>
-            PlannerCubit(favoritesCubit: context.read<FavoritesCubit>())
-              ..initialize(),
-      ),
     ],
     child: _HomeView(userName: userName),
   );
@@ -66,9 +62,36 @@ class _HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<_HomeView> {
   int _currentBottomNavIndex = 0;
+  final Set<String> _pendingFavoriteIds = {};
 
   final _homeSearchController = TextEditingController();
   final _homeSearchFocusNode = FocusNode();
+
+  Future<void> _toggleFavorite(MealModel meal) async {
+    if (!_pendingFavoriteIds.add(meal.idMeal)) return;
+    try {
+      if (!await requireSignedIn(context, feature: 'Saving favorites')) return;
+      if (!mounted) return;
+
+      final favorites = context.read<FavoritesCubit>();
+      final isFavorite = favorites.isFavorite(meal.idMeal);
+      if (isFavorite) {
+        final confirmed = await showActionConfirmationDialog(
+          context,
+          title: 'Remove from favorites?',
+          message: 'Remove ${meal.strMeal} from your favorites?',
+          confirmLabel: 'Remove',
+          icon: Icons.favorite_border,
+          accentColor: Theme.of(context).colorScheme.error,
+        );
+        if (!confirmed || !mounted) return;
+      }
+
+      await context.read<HomeCubit>().toggleFavorite(meal);
+    } finally {
+      _pendingFavoriteIds.remove(meal.idMeal);
+    }
+  }
 
   @override
   void dispose() {
@@ -210,11 +233,6 @@ class _HomeViewState extends State<_HomeView> {
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'Search filters',
-            onPressed: () => _openSearch(),
-            icon: Icon(Icons.tune, color: c.onSurface, size: 20),
-          ),
         ],
       ),
     );
@@ -240,6 +258,7 @@ class _HomeViewState extends State<_HomeView> {
               // 0 - HOME
               // =========================
               SafeArea(
+                bottom: false,
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
@@ -532,16 +551,7 @@ class _HomeViewState extends State<_HomeView> {
                             child: _popularTile(
                               meal,
                               state.favoriteIds.contains(meal.idMeal),
-                              () async {
-                                if (!await requireSignedIn(
-                                  context,
-                                  feature: 'Saving favorites',
-                                )) {
-                                  return;
-                                }
-
-                                await cubit.toggleFavorite(meal);
-                              },
+                              () => _toggleFavorite(meal),
                               () => Navigator.of(context)
                                   .push(
                                     MaterialPageRoute(
@@ -821,15 +831,7 @@ class _HomeViewState extends State<_HomeView> {
                           minHeight: 40,
                         ),
                         padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          if (!await requireSignedIn(
-                            context,
-                            feature: 'Saving favorites',
-                          )) {
-                            return;
-                          }
-                          cubit.toggleFavorite(meal);
-                        },
+                        onPressed: () => _toggleFavorite(meal),
                         tooltip: fav
                             ? 'Remove from favorites'
                             : 'Add to favorites',
