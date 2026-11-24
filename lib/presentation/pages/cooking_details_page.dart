@@ -51,18 +51,30 @@ class CookingDetailsPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ingredients', style: AppTheme.titleBold.copyWith(color: colors.onSurface)),
-              Text('1 serving', style: AppTheme.small.copyWith(color: colors.onSurfaceVariant)),
+              Text(
+                'Ingredients',
+                style: AppTheme.titleBold.copyWith(color: colors.onSurface),
+              ),
+              Text(
+                '1 serving',
+                style: AppTheme.small.copyWith(color: colors.onSurfaceVariant),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (meal.ingredients.isEmpty)
-            _emptyCard(colors, 'Ingredient details are not available for this recipe.')
+            _emptyCard(
+              colors,
+              'Ingredient details are not available for this recipe.',
+            )
           else
             ...meal.ingredients.map(
               (ingredient) => Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(22),
@@ -76,64 +88,89 @@ class CookingDetailsPage extends StatelessWidget {
                         color: Theme.of(context).scaffoldBackgroundColor,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.restaurant, size: 18, color: colors.onSurfaceVariant),
+                      child: Icon(
+                        Icons.restaurant,
+                        size: 18,
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(ingredient.name, style: AppTheme.label.copyWith(color: colors.onSurface)),
+                      child: Text(
+                        ingredient.name,
+                        style: AppTheme.label.copyWith(color: colors.onSurface),
+                      ),
                     ),
-                    Text(ingredient.measure, style: AppTheme.body.copyWith(color: colors.onSurfaceVariant)),
+                    Text(
+                      ingredient.measure,
+                      style: AppTheme.body.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           const SizedBox(height: 16),
-          Text('Instructions', style: AppTheme.titleBold.copyWith(color: colors.onSurface)),
+          Text(
+            'Instructions',
+            style: AppTheme.titleBold.copyWith(color: colors.onSurface),
+          ),
           const SizedBox(height: 12),
           if (steps.isEmpty)
-            _emptyCard(colors, 'Cooking instructions are not available for this recipe.')
+            _emptyCard(
+              colors,
+              'Cooking instructions are not available for this recipe.',
+            )
           else
             ...List.generate(steps.length, (index) {
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
+                child: Material(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(22),
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    title: Text(
-                      '${index + 1}  ${_stepTitle(steps[index])}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.label.copyWith(color: colors.onSurface),
-                    ),
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          steps[index],
-                          style: AppTheme.body.copyWith(height: 1.5, color: colors.onSurfaceVariant),
-                        ),
+                  child: Theme(
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      title: Text(
+                        '${index + 1}  ${_stepTitle(steps[index])}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.label.copyWith(color: colors.onSurface),
                       ),
-                    ],
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            steps[index],
+                            style: AppTheme.body.copyWith(
+                              height: 1.5,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
             }),
           const SizedBox(height: 8),
           Text(
-            'Expandable quantities · steps shown individually',
+            'Expandable quantities - steps shown individually',
             style: AppTheme.small.copyWith(color: colors.onSurfaceVariant),
           ),
         ],
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: 0,
-        onTap: (_) { Navigator.maybePop(context); },
+        onTap: (_) {
+          Navigator.maybePop(context);
+        },
       ),
     );
   }
@@ -145,8 +182,14 @@ class CookingDetailsPage extends StatelessWidget {
   }
 
   Widget _emptyCard(ColorScheme colors, String message) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
-        child: Text(message, style: AppTheme.body.copyWith(color: colors.onSurfaceVariant)),
-      );
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      message,
+      style: AppTheme.body.copyWith(color: colors.onSurfaceVariant),
+    ),
+  );
 }

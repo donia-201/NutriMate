@@ -9,7 +9,6 @@ import '../../data/dataresource/local_database_service.dart';
 import '../../core/utils/app_colors.dart';
 import '../widgets/bottom_nav.dart';
 
-
 enum InsightPeriod { today, week, month, custom }
 
 class InsightsPage extends StatefulWidget {
@@ -53,8 +52,9 @@ class _InsightsPageState extends State<InsightsPage> {
       case InsightPeriod.today:
         return _dateOnly(_anchorDate);
       case InsightPeriod.week:
-        return _dateOnly(_anchorDate)
-            .subtract(Duration(days: _anchorDate.weekday - DateTime.monday));
+        return _dateOnly(
+          _anchorDate,
+        ).subtract(Duration(days: _anchorDate.weekday - DateTime.monday));
       case InsightPeriod.month:
         return DateTime(_anchorDate.year, _anchorDate.month);
       case InsightPeriod.custom:
@@ -86,7 +86,6 @@ class _InsightsPageState extends State<InsightsPage> {
     });
     _loadLogs();
   }
-
 
   @override
   void dispose() {
@@ -135,8 +134,8 @@ class _InsightsPageState extends State<InsightsPage> {
         context: context,
         firstDate: DateTime(2020),
         lastDate: DateTime.now(),
-        initialDateRange: _customRange ??
-            DateTimeRange(start: _anchorDate, end: _anchorDate),
+        initialDateRange:
+            _customRange ?? DateTimeRange(start: _anchorDate, end: _anchorDate),
       );
       if (selected != null) {
         setState(() {
@@ -194,9 +193,11 @@ class _InsightsPageState extends State<InsightsPage> {
     }
 
     final days = <_DayTotal>[];
-    for (var date = _startDate;
-        !date.isAfter(_endDate);
-        date = date.add(const Duration(days: 1))) {
+    for (
+      var date = _startDate;
+      !date.isAfter(_endDate);
+      date = date.add(const Duration(days: 1))
+    ) {
       days.add(map[DateFormat('yyyy-MM-dd').format(date)] ?? _DayTotal(date));
     }
     return days;
@@ -213,11 +214,11 @@ class _InsightsPageState extends State<InsightsPage> {
       case InsightPeriod.today:
         return DateFormat('EEEE, MMMM d, y').format(_anchorDate);
       case InsightPeriod.week:
-        return '${DateFormat('MMM d').format(_startDate)}–${DateFormat('MMM d, y').format(_endDate)}';
+        return '${DateFormat('MMM d').format(_startDate)}-${DateFormat('MMM d, y').format(_endDate)}';
       case InsightPeriod.month:
         return DateFormat('MMMM y').format(_anchorDate);
       case InsightPeriod.custom:
-        return '${DateFormat('MMM d, y').format(_startDate)} – ${DateFormat('MMM d, y').format(_endDate)}';
+        return '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}';
     }
   }
 
@@ -229,7 +230,8 @@ class _InsightsPageState extends State<InsightsPage> {
     final protein = _sum('protein');
     final carbs = _sum('carbohydrates');
     final fat = _sum('fat');
-    final isSingleDay = _period == InsightPeriod.today ||
+    final isSingleDay =
+        _period == InsightPeriod.today ||
         (_period == InsightPeriod.custom && _startDate == _endDate);
 
     return Scaffold(
@@ -268,47 +270,51 @@ class _InsightsPageState extends State<InsightsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _errorState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  children: [
-                    _syncNotice(),
-                    const SizedBox(height: 14),
-                    _periodSelector(),
-                    const SizedBox(height: 12),
-                    Text(
-                      _period == InsightPeriod.custom ? 'Custom date range' : 'Data range',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    _dateSelector(),
-                    const SizedBox(height: 12),
-                    if (_logs.isEmpty) _emptyState(),
-                    if (_logs.isNotEmpty) ...[
-                      if (isSingleDay)
-                        _todaySummary(calories, protein, carbs, fat)
-                      else
-                        _periodSummary(days, calories, protein, carbs, fat),
-                      const SizedBox(height: 12),
-                      _nutritionBreakdown(
-                        isSingleDay ? 'Daily nutrition' : 'Daily averages',
-                        isSingleDay
-                            ? calories
-                            : _dailyAverageCalories,
-                        isSingleDay ? protein : _average('protein'),
-                        isSingleDay ? carbs : _average('carbohydrates'),
-                        isSingleDay ? fat : _average('fat'),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _disclaimer(),
-                  ],
+          ? _errorState()
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              children: [
+                _syncNotice(),
+                const SizedBox(height: 14),
+                _periodSelector(),
+                const SizedBox(height: 12),
+                Text(
+                  _period == InsightPeriod.custom
+                      ? 'Custom date range'
+                      : 'Data range',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                const SizedBox(height: 8),
+                _dateSelector(),
+                const SizedBox(height: 12),
+                if (_logs.isEmpty) _emptyState(),
+                if (_logs.isNotEmpty) ...[
+                  if (isSingleDay)
+                    _todaySummary(calories, protein, carbs, fat)
+                  else
+                    _periodSummary(days, calories, protein, carbs, fat),
+                  const SizedBox(height: 12),
+                  _nutritionBreakdown(
+                    isSingleDay ? 'Daily nutrition' : 'Daily averages',
+                    isSingleDay ? calories : _dailyAverageCalories,
+                    isSingleDay ? protein : _average('protein'),
+                    isSingleDay ? carbs : _average('carbohydrates'),
+                    isSingleDay ? fat : _average('fat'),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                _disclaimer(),
+              ],
+            ),
       bottomNavigationBar: widget.embedded
           ? null
           : BottomNavBar(
               currentIndex: 0,
-              onTap: widget.onBottomNavTap ?? (_) { Navigator.maybePop(context); },
+              onTap:
+                  widget.onBottomNavTap ??
+                  (_) {
+                    Navigator.maybePop(context);
+                  },
             ),
     );
   }
@@ -321,21 +327,21 @@ class _InsightsPageState extends State<InsightsPage> {
   }
 
   Widget _syncNotice() => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.primaryGreen.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(18),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: AppColors.primaryGreen.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.sync, size: 22),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text('Your insights update from meals logged as eaten.'),
         ),
-        child: const Row(
-          children: [
-            Icon(Icons.sync, size: 22),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text('Your insights update from meals logged as eaten.'),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _periodSelector() {
     final labels = {
@@ -356,7 +362,9 @@ class _InsightsPageState extends State<InsightsPage> {
           backgroundColor: Theme.of(context).colorScheme.surface,
           shape: StadiumBorder(
             side: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.38),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.38),
             ),
           ),
         );
@@ -365,32 +373,40 @@ class _InsightsPageState extends State<InsightsPage> {
   }
 
   Widget _dateSelector() => InkWell(
-        onTap: _selectDate,
+    onTap: _selectDate,
+    borderRadius: BorderRadius.circular(18),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: [
-              Expanded(child: Text(_rangeLabel)),
-              const Icon(Icons.calendar_month_outlined),
-            ],
-          ),
-        ),
-      );
+      ),
+      child: Row(
+        children: [
+          Expanded(child: Text(_rangeLabel)),
+          const Icon(Icons.calendar_month_outlined),
+        ],
+      ),
+    ),
+  );
 
-  Widget _todaySummary(double calories, double protein, double carbs, double fat) {
+  Widget _todaySummary(
+    double calories,
+    double protein,
+    double carbs,
+    double fat,
+  ) {
     final total = calories.round();
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$total kcal', style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+          Text(
+            '$total kcal',
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Consumed today • from logged meals'),
+          const Text('Consumed today - from logged meals'),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -409,13 +425,21 @@ class _InsightsPageState extends State<InsightsPage> {
                         proteinColor: _macroColor('Protein'),
                         carbsColor: _macroColor('Carbs'),
                         fatColor: _macroColor('Fat'),
-                        trackColor: Theme.of(context).colorScheme.outline.withValues(alpha: 0.18),
+                        trackColor: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.18),
                       ),
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('$total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                        Text(
+                          '$total',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
                         const Text('kcal', style: TextStyle(fontSize: 12)),
                       ],
                     ),
@@ -440,14 +464,23 @@ class _InsightsPageState extends State<InsightsPage> {
     );
   }
 
-  Widget _periodSummary(List<_DayTotal> days, double calories, double protein, double carbs, double fat) {
+  Widget _periodSummary(
+    List<_DayTotal> days,
+    double calories,
+    double protein,
+    double carbs,
+    double fat,
+  ) {
     final average = _dailyAverageCalories;
     final title = '${average.round()} kcal / day';
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Text('${calories.round()} kcal total in selected period'),
           const SizedBox(height: 22),
@@ -458,48 +491,66 @@ class _InsightsPageState extends State<InsightsPage> {
                 : _DailyBarChart(days: days),
           ),
           const SizedBox(height: 8),
-          Text('${days.length} day(s) in range',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            '${days.length} day(s) in range',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _nutritionBreakdown(String title, double calories, double protein, double carbs, double fat) =>
-      _card(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _nutritionBreakdown(
+    String title,
+    double calories,
+    double protein,
+    double carbs,
+    double fat,
+  ) => _card(
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$title - logged meals',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+        const SizedBox(height: 16),
+        Row(
           children: [
-            Text('$title • logged meals', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _metric('Calories', '${calories.round()} kcal'),
-                _metric('Protein', '${protein.round()}g'),
-                _metric('Carbs', '${carbs.round()}g'),
-                _metric('Fat', '${fat.round()}g'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('Macro targets are not set. Values are estimates when recipe nutrition is available.',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            _metric('Calories', '${calories.round()} kcal'),
+            _metric('Protein', '${protein.round()}g'),
+            _metric('Carbs', '${carbs.round()}g'),
+            _metric('Fat', '${fat.round()}g'),
           ],
         ),
-      );
+        const SizedBox(height: 12),
+        Text(
+          'Macro targets are not set. Values are estimates when recipe nutrition is available.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _legend(String label, double value, String unit) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Icon(Icons.circle, size: 9, color: _macroColor(label)),
-            const SizedBox(width: 7),
-            Expanded(child: Text(label)),
-            Text('${value.round()}$unit', style: const TextStyle(fontWeight: FontWeight.w600)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        Icon(Icons.circle, size: 9, color: _macroColor(label)),
+        const SizedBox(width: 7),
+        Expanded(child: Text(label)),
+        Text(
+          '${value.round()}$unit',
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-      );
+      ],
+    ),
+  );
 
   Color _macroColor(String label) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -517,72 +568,92 @@ class _InsightsPageState extends State<InsightsPage> {
   }
 
   Widget _metric(String label, String value) => Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 11, color: _macroColor(label))),
-            const SizedBox(height: 5),
-            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _macroColor(label))),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: _macroColor(label))),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: _macroColor(label),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _disclaimer() => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.primaryGreen.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(16),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: AppColors.primaryGreen.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.info_outline),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Only meals marked "Log as eaten" are included. Favorites and planned meals are excluded. Missing nutrition values are not counted.',
+          ),
         ),
-        child: const Row(
-          children: [
-            Icon(Icons.info_outline),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text('Only meals marked “Log as eaten” are included. Favorites and planned meals are excluded. Missing nutrition values are not counted.'),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _emptyState() => _card(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 22),
-          child: Column(
-            children: [
-              Icon(Icons.restaurant_outlined, size: 42, color: AppColors.primaryGreen),
-              SizedBox(height: 12),
-              Text('No meals logged for this period', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-              SizedBox(height: 6),
-              Text('Use “Log as eaten” on a recipe to see its nutrition here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
+    Padding(
+      padding: const EdgeInsets.symmetric(vertical: 22),
+      child: Column(
+        children: [
+          Icon(
+            Icons.restaurant_outlined,
+            size: 42,
+            color: AppColors.primaryGreen,
           ),
-        ),
-      );
+          SizedBox(height: 12),
+          Text(
+            'No meals logged for this period',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Use "Log as eaten" on a recipe to see its nutrition here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _errorState() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load nutrition insights.'),
-              const SizedBox(height: 8),
-              TextButton(onPressed: _loadLogs, child: const Text('Try again')),
-            ],
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Could not load nutrition insights.'),
+          const SizedBox(height: 8),
+          TextButton(onPressed: _loadLogs, child: const Text('Try again')),
+        ],
+      ),
+    ),
+  );
 
   Widget _card(Widget child) => Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: child,
-      );
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: child,
+  );
 }
 
 class _DayTotal {
@@ -664,7 +735,10 @@ class _DailyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = days.fold<double>(1, (m, d) => d.calories > m ? d.calories : m);
+    final maxValue = days.fold<double>(
+      1,
+      (m, d) => d.calories > m ? d.calories : m,
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: days.map((day) {
@@ -679,14 +753,18 @@ class _DailyBarChart extends StatelessWidget {
                   height: height.clamp(4, 92),
                   decoration: BoxDecoration(
                     color: day.calories == 0
-                        ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.5)
                         : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(7),
                   ),
                 ),
                 const SizedBox(height: 7),
-                Text(DateFormat('E').format(day.date).substring(0, 1),
-                    style: const TextStyle(fontSize: 10)),
+                Text(
+                  DateFormat('E').format(day.date).substring(0, 1),
+                  style: const TextStyle(fontSize: 10),
+                ),
               ],
             ),
           ),
@@ -702,9 +780,9 @@ class _MonthlyLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-        painter: _LineChartPainter(days, Theme.of(context).colorScheme.primary),
-        child: const SizedBox.expand(),
-      );
+    painter: _LineChartPainter(days, Theme.of(context).colorScheme.primary),
+    child: const SizedBox.expand(),
+  );
 }
 
 class _LineChartPainter extends CustomPainter {
@@ -715,11 +793,17 @@ class _LineChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (days.isEmpty) return;
-    final maxValue = days.fold<double>(1, (m, d) => d.calories > m ? d.calories : m);
+    final maxValue = days.fold<double>(
+      1,
+      (m, d) => d.calories > m ? d.calories : m,
+    );
     final path = Path();
     for (var i = 0; i < days.length; i++) {
-      final x = days.length == 1 ? size.width / 2 : size.width * i / (days.length - 1);
-      final y = size.height - (days[i].calories / maxValue) * (size.height - 18) - 8;
+      final x = days.length == 1
+          ? size.width / 2
+          : size.width * i / (days.length - 1);
+      final y =
+          size.height - (days[i].calories / maxValue) * (size.height - 18) - 8;
       if (i == 0) {
         path.moveTo(x, y);
       } else {
@@ -735,5 +819,6 @@ class _LineChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => oldDelegate.days != days || oldDelegate.color != color;
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) =>
+      oldDelegate.days != days || oldDelegate.color != color;
 }

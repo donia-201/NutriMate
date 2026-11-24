@@ -9,10 +9,14 @@ String _recipeMeta(HealthyAlternative alternative) {
       .whereType<String>()
       .map((value) => value.trim())
       .where((value) => value.isNotEmpty)
-      .join(' · ');
+      .join(' - ');
 }
 
-Widget _recipeImage(BuildContext context, String? url, {required double height}) {
+Widget _recipeImage(
+  BuildContext context,
+  String? url, {
+  required double height,
+}) {
   Widget placeholder() {
     return Container(
       height: height,
@@ -78,7 +82,9 @@ class AlternativeRecipeCard extends StatelessWidget {
                   onTap: onToggleSaved,
                   child: CircleAvatar(
                     radius: 17,
-                    backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surface.withValues(alpha: 0.92),
                     child: Icon(
                       isSaved ? Icons.favorite : Icons.favorite_border,
                       size: 19,
@@ -131,7 +137,9 @@ class AlternativeRecipeCard extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -151,8 +159,12 @@ class AlternativeRecipeCard extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: onViewRecipe,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -173,8 +185,12 @@ class AlternativeRecipeCard extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: onToggleSaved,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.onSurface,
-                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurface,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22),
@@ -279,7 +295,9 @@ Future<void> showRecipeDetailsSheet(
                     style: TextStyle(
                       fontSize: 12.5,
                       height: 1.5,
-                      color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                      color: Theme.of(
+                        sheetContext,
+                      ).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),

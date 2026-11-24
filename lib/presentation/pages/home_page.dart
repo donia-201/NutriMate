@@ -18,6 +18,9 @@ import 'favorites_screen.dart';
 import 'all_popular_recipes_page.dart';
 import 'planner_page.dart';
 import 'profile_screen.dart';
+import 'notifications_page.dart';
+import '../cubit/notifications_cubit.dart';
+import '../cubit/notifications_state.dart';
 import './search_page.dart';
 import 'meal_details_page.dart';
 import '../../core/network/ai_api_config.dart';
@@ -42,7 +45,11 @@ class HomePage extends StatelessWidget {
               ..initialize(),
       ),
       BlocProvider(create: (_) => SearchCubit()),
-      BlocProvider(create: (_) => PlannerCubit()..initialize()),
+      BlocProvider(
+        create: (context) =>
+            PlannerCubit(favoritesCubit: context.read<FavoritesCubit>())
+              ..initialize(),
+      ),
     ],
     child: _HomeView(userName: userName),
   );
@@ -116,11 +123,31 @@ class _HomeViewState extends State<_HomeView> {
 
   void _openProfile() => Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    MaterialPageRoute(
+      builder: (_) => ProfileScreen(
+        onDestinationChanged: (index) {
+          if (mounted) setState(() => _currentBottomNavIndex = index);
+        },
+      ),
+    ),
   );
+
+  void _openNotifications() {
+    context.read<NotificationsCubit>().load();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<NotificationsCubit>(),
+          child: const NotificationsPage(),
+        ),
+      ),
+    );
+  }
 
   void _openSearch({String? query}) {
     _homeSearchFocusNode.unfocus();
+    if (mounted) setState(() => _currentBottomNavIndex = 0);
 
     final searchCubit = context.read<SearchCubit>();
     final normalizedQuery = query?.trim() ?? '';
@@ -249,23 +276,75 @@ class _HomeViewState extends State<_HomeView> {
                             ],
                           ),
 
-                          // Profile icon
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: c.surface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              onPressed: _openProfile,
-                              icon: Icon(
-                                Icons.person_outline,
-                                color: c.onSurface,
-                                size: 22,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              BlocBuilder<
+                                NotificationsCubit,
+                                NotificationsState
+                              >(
+                                builder: (context, notifications) {
+                                  final unread = notifications.unreadCount;
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: c.surface,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: IconButton(
+                                          padding: EdgeInsets.zero,
+                                          onPressed: _openNotifications,
+                                          icon: Icon(
+                                            Icons.notifications_none,
+                                            color: c.onSurface,
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                      if (unread > 0)
+                                        Positioned(
+                                          right: 1,
+                                          top: 1,
+                                          child: Container(
+                                            width: 9,
+                                            height: 9,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.error,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: c.surface,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: c.surface,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: _openProfile,
+                                  icon: Icon(
+                                    Icons.person_outline,
+                                    color: c.onSurface,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -510,7 +589,29 @@ class _HomeViewState extends State<_HomeView> {
               // =========================
               // 2 - NUTRIAI
               // =========================
-              const Scaffold(body: Center(child: Text('NutriAI'))),
+              BlocProvider(
+                create: (_) {
+                  final aiDioClient = DioClient(
+                    baseUrl: AiApiConfig.baseUrl.isEmpty
+                        ? 'https://invalid.invalid/'
+                        : AiApiConfig.baseUrl,
+                  );
+                  final mealApiService = MealApiService();
+                  final dataSource = AiRemoteDataSource(
+                    aiDioClient: aiDioClient,
+                    mealApiService: mealApiService,
+                  );
+                  return AiChatCubit(
+                    repository: AiRepository(dataSource: dataSource),
+                  );
+                },
+                child: AiAssistantPage(
+                  embedded: true,
+                  onBottomNavTap: (index) {
+                    setState(() => _currentBottomNavIndex = index);
+                  },
+                ),
+              ),
 
               // =========================
               // 3 - PLANNER
@@ -520,15 +621,22 @@ class _HomeViewState extends State<_HomeView> {
                 embedded: true,
                 // The planner is a tab here, so "back" goes to the Home tab.
                 onBack: () => setState(() => _currentBottomNavIndex = 0),
+                onBottomNavTap: (index) {
+                  setState(() => _currentBottomNavIndex = index);
+                },
+                onAddMeal: () {
+                  setState(() => _currentBottomNavIndex = 0);
+                  _openSearch();
+                },
               ),
 
               // =========================
               // 4 - Insights
               // =========================
-               InsightsPage(
+              InsightsPage(
                 embedded: true,
                 onBack: () => setState(() => _currentBottomNavIndex = 0),
-                ),
+              ),
             ],
           ),
 
@@ -616,7 +724,7 @@ class _HomeViewState extends State<_HomeView> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              state.errorMessage ?? 'Offline mode — showing saved recipes.',
+              state.errorMessage ?? 'Offline mode - showing saved recipes.',
               style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),
             ),
           ),
@@ -677,7 +785,7 @@ class _HomeViewState extends State<_HomeView> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${meal.strCategory ?? 'Meal'} • ${meal.strArea ?? 'International'}',
+                          '${meal.strCategory ?? 'Meal'} - ${meal.strArea ?? 'International'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -696,7 +804,7 @@ class _HomeViewState extends State<_HomeView> {
                     children: [
                       Text(
                         calories == null
-                            ? '— kcal'
+                            ? '- kcal'
                             : '${calories.toStringAsFixed(0)} kcal',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
@@ -931,7 +1039,7 @@ class _HomeViewState extends State<_HomeView> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${meal.strCategory ?? 'Recipe'} • ${meal.strArea ?? 'International'}',
+                    '${meal.strCategory ?? 'Recipe'} - ${meal.strArea ?? 'International'}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: c.onSurfaceVariant),

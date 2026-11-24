@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
+import '../../core/guest_guard.dart';
 import '../../data/models/meal_model.dart';
 import '../cubit/planner_cubit.dart';
 
@@ -11,7 +12,22 @@ Future<bool?> showAddToPlannerSheet(
   DateTime? initialDay,
   PlannerCubit? cubit,
   int calories = 0,
-}) {
+}) async {
+  final requestedDay = initialDay ?? DateTime.now();
+  if (PlannerCubit.isPastDay(requestedDay)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Past dates are view-only. Choose today or a future day.',
+        ),
+      ),
+    );
+    return false;
+  }
+  if (!await requireSignedIn(context, feature: 'Meal planning')) {
+    return false;
+  }
+  if (!context.mounted) return false;
   final plannerCubit = cubit ?? PlannerCubit();
   return showModalBottomSheet<bool>(
     context: context,
@@ -55,11 +71,14 @@ class _PlannerSheetState extends State<_PlannerSheet> {
   @override
   void initState() {
     super.initState();
-    _day = DateTime(
+    final initialDay = DateTime(
       widget.initialDay.year,
       widget.initialDay.month,
       widget.initialDay.day,
     );
+    _day = PlannerCubit.isPastDay(initialDay)
+        ? PlannerCubit.dateOnly(DateTime.now())
+        : initialDay;
   }
 
   @override
@@ -71,6 +90,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
   @override
   Widget build(BuildContext context) {
     final weekStart = _day.subtract(Duration(days: _day.weekday - 1));
+    final isPast = PlannerCubit.isPastDay(_day);
     final days = List.generate(
       7,
       (index) => weekStart.add(Duration(days: index)),
@@ -109,16 +129,32 @@ class _PlannerSheetState extends State<_PlannerSheet> {
               _sectionLabel('Day'),
               const SizedBox(height: 8),
               _daySelector(days),
+              if (isPast) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Past dates are view-only.',
+                  style: AppTheme.small.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               _sectionLabel('Meal slot'),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, children: plannerSlots.map(_slotChip).toList()),
+              Wrap(
+                spacing: 8,
+                children: plannerSlots
+                    .map((slot) => _slotChip(slot, disabled: isPast))
+                    .toList(),
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: AppButton(
-                  label: _isSaving ? 'Saving...' : 'Add meal',
-                  onPressed: _isSaving ? null : _confirm,
+                  label: isPast
+                      ? 'Past date - view only'
+                      : (_isSaving ? 'Saving...' : 'Add meal'),
+                  onPressed: (_isSaving || isPast) ? null : _confirm,
                   isLoading: _isSaving,
                 ),
               ),
@@ -173,7 +209,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${widget.meal.strCategory ?? 'Meal'} â€¢ ${widget.meal.strArea ?? 'International'}',
+                '${widget.meal.strCategory ?? 'Meal'} - ${widget.meal.strArea ?? 'International'}',
               ),
               const SizedBox(height: 4),
               Text(
@@ -201,6 +237,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
     child: Row(
       children: days.map((day) {
         final selected = _sameDay(day, _day);
+        final past = PlannerCubit.isPastDay(day);
         return Padding(
           padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
@@ -210,10 +247,16 @@ class _PlannerSheetState extends State<_PlannerSheet> {
               fontSize: 12,
               color: selected
                   ? Theme.of(context).colorScheme.onPrimary
+                  : past
+                  ? Theme.of(context).colorScheme.onSurfaceVariant
                   : Theme.of(context).colorScheme.onSurface,
             ),
-            selectedColor: Theme.of(context).colorScheme.primary,
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            selectedColor: past
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : Theme.of(context).colorScheme.primary,
+            backgroundColor: past
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : Theme.of(context).colorScheme.surface,
             side: BorderSide(
               color: selected
                   ? Theme.of(context).colorScheme.primary
@@ -222,23 +265,29 @@ class _PlannerSheetState extends State<_PlannerSheet> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.cardRadius),
             ),
-            onSelected: (_) => setState(() => _day = day),
+            onSelected: past ? null : (_) => setState(() => _day = day),
           ),
         );
       }).toList(),
     ),
   );
 
-  Widget _slotChip(String slot) => ChoiceChip(
+  Widget _slotChip(String slot, {required bool disabled}) => ChoiceChip(
     selected: _slot == slot,
     label: Text(slot),
     labelStyle: AppTheme.label.copyWith(
-      color: _slot == slot
+      color: disabled
+          ? Theme.of(context).colorScheme.onSurfaceVariant
+          : _slot == slot
           ? Theme.of(context).colorScheme.onPrimary
           : Theme.of(context).colorScheme.onSurface,
     ),
-    selectedColor: Theme.of(context).colorScheme.primary,
-    backgroundColor: Theme.of(context).colorScheme.surface,
+    selectedColor: disabled
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : Theme.of(context).colorScheme.primary,
+    backgroundColor: disabled
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : Theme.of(context).colorScheme.surface,
     side: BorderSide(
       color: _slot == slot
           ? Theme.of(context).colorScheme.primary
@@ -247,10 +296,20 @@ class _PlannerSheetState extends State<_PlannerSheet> {
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     ),
-    onSelected: (_) => setState(() => _slot = slot),
+    onSelected: disabled ? null : (_) => setState(() => _slot = slot),
   );
 
   Future<void> _confirm() async {
+    if (PlannerCubit.isPastDay(_day)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Past dates are view-only. Choose today or a future day.',
+          ),
+        ),
+      );
+      return;
+    }
     final existing = await widget.cubit.plannedMeal(_day, _slot);
     if (!mounted) return;
     if (existing != null) {

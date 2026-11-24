@@ -6,21 +6,27 @@ import '../../data/models/planned_meal.dart';
 import 'planner_state.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/services/meal_notification_service.dart';
+import 'favorites_cubit.dart';
 
 const plannerSlots = ['Breakfast', 'Lunch', 'Dinner'];
-
 
 class PlannerCubit extends Cubit<PlannerState> {
   PlannerCubit({
     LocalDatabaseService? databaseService,
-    FirebaseAuth? auth,                      // <-- ده المهم
-  })  : _database = databaseService ?? LocalDatabaseService.instance,
-        _auth = auth ?? FirebaseAuth.instance,
-        super(PlannerState(selectedDay: _dateOnly(DateTime.now()))) {
+    FirebaseAuth? auth, // <-- ده المهم
+    MealNotificationService? notificationService,
+    FavoritesCubit? favoritesCubit,
+  }) : _database = databaseService ?? LocalDatabaseService.instance,
+       _auth = auth ?? FirebaseAuth.instance,
+       _notifications = notificationService ?? MealNotificationService.instance,
+       _favorites = favoritesCubit,
+       super(PlannerState(selectedDay: _dateOnly(DateTime.now()))) {
     _lastUid = _auth.currentUser?.uid;
     _authSub = _auth.authStateChanges().listen((user) {
       if (user?.uid == _lastUid) return;
       _lastUid = user?.uid;
+      if (isClosed) return;
       emit(PlannerState(selectedDay: state.selectedDay));
       loadDay(state.selectedDay);
     });
@@ -28,11 +34,12 @@ class PlannerCubit extends Cubit<PlannerState> {
 
   final LocalDatabaseService _database;
   final FirebaseAuth _auth;
+  final MealNotificationService _notifications;
+  final FavoritesCubit? _favorites;
   StreamSubscription<User?>? _authSub;
   String? _lastUid;
 
   String get _uid => _auth.currentUser?.uid ?? 'guest';
-
 
   @override
   Future<void> close() async {
@@ -49,6 +56,7 @@ class PlannerCubit extends Cubit<PlannerState> {
   Future<void> retry() => loadDay(state.selectedDay);
 
   Future<void> loadDay(DateTime day) async {
+    if (isClosed) return;
     final selectedDay = _dateOnly(day);
     emit(
       state.copyWith(
@@ -69,6 +77,8 @@ class PlannerCubit extends Cubit<PlannerState> {
       final meals = weekMeals
           .where((meal) => _sameDay(meal.day, selectedDay))
           .toList();
+      await _ensurePlannedMealsFavorited(weekMeals);
+      if (isClosed) return;
       emit(
         state.copyWith(
           meals: meals,
@@ -77,7 +87,11 @@ class PlannerCubit extends Cubit<PlannerState> {
           clearError: true,
         ),
       );
+      if (!isClosed) {
+        await _notifications.syncScheduledMeals(weekMeals);
+      }
     } catch (_) {
+      if (isClosed) return;
       emit(
         state.copyWith(
           isLoading: false,
@@ -94,6 +108,27 @@ class PlannerCubit extends Cubit<PlannerState> {
     int servings = 1,
     int calories = 0,
   }) async {
+    if (isClosed) return;
+    if (isPastDay(day)) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage:
+              'Past dates are view-only. Choose today or a future day.',
+        ),
+      );
+      return;
+    }
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Sign in to add meals to your planner.',
+        ),
+      );
+      return;
+    }
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
       await _database.savePlannedMeal(
@@ -106,8 +141,18 @@ class PlannerCubit extends Cubit<PlannerState> {
           calories: calories,
         ),
       );
+      await _ensurePlannedMealsFavorited([
+        PlannedMeal.fromMeal(
+          meal: meal,
+          day: day,
+          slot: slot,
+          servings: servings,
+          calories: calories,
+        ),
+      ]);
       await loadDay(day);
     } catch (_) {
+      if (isClosed) return;
       emit(
         state.copyWith(
           isLoading: false,
@@ -118,11 +163,22 @@ class PlannerCubit extends Cubit<PlannerState> {
   }
 
   Future<void> removeMeal(PlannedMeal meal) async {
+    if (isClosed) return;
+    if (isPastDay(meal.day)) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Past planned meals cannot be changed or removed.',
+        ),
+      );
+      return;
+    }
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await _database.removePlannedMeal(_uid,meal);
+      await _database.removePlannedMeal(_uid, meal);
       await loadDay(state.selectedDay);
     } catch (_) {
+      if (isClosed) return;
       emit(
         state.copyWith(
           isLoading: false,
@@ -135,7 +191,40 @@ class PlannerCubit extends Cubit<PlannerState> {
   Future<List<MealModel>> cachedMeals() => _database.getCachedMeals(limit: 50);
 
   Future<PlannedMeal?> plannedMeal(DateTime day, String slot) =>
-      _database.getPlannedMeal(_uid,day, slot);
+      _database.getPlannedMeal(_uid, day, slot);
+
+  Future<void> _ensurePlannedMealsFavorited(
+    List<PlannedMeal> plannedMeals,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) return;
+
+    final seen = <String>{};
+    for (final planned in plannedMeals) {
+      if (!seen.add(planned.idMeal)) continue;
+      final favorite = await _database.isFavorite(_uid, planned.idMeal);
+      if (favorite) continue;
+      await _database.setFavorite(
+        _uid,
+        MealModel(
+          idMeal: planned.idMeal,
+          strMeal: planned.strMeal,
+          strMealThumb: planned.strMealThumb,
+          strCategory: planned.strCategory,
+          strArea: planned.strArea,
+        ),
+        true,
+      );
+    }
+    if (!isClosed) await _favorites?.load();
+  }
+
+  static DateTime dateOnly(DateTime value) => _dateOnly(value);
+
+  static bool isPastDay(DateTime value) {
+    final today = _dateOnly(DateTime.now());
+    return _dateOnly(value).isBefore(today);
+  }
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);

@@ -98,4 +98,84 @@ void main() {
     expect(cubit.state.meals, isEmpty);
     expect(cubit.state.query, isEmpty);
   });
+
+  test('name search waits for debounce before calling API', () async {
+    cubit.setMode(SearchMode.search);
+    when(() => api.searchMeals('chicken')).thenAnswer((_) async => const []);
+    when(() => database.cacheMeals(any())).thenAnswer((_) async {});
+
+    cubit.searchChanged('chi');
+    cubit.searchChanged('chic');
+    cubit.searchChanged('chicken');
+
+    expect(cubit.state.isTyping, isTrue);
+    verifyNever(() => api.searchMeals(any()));
+
+    await Future<void>.delayed(
+      SearchCubit.nameSearchDebounce + const Duration(milliseconds: 100),
+    );
+
+    verify(() => api.searchMeals('chicken')).called(1);
+  });
+
+  test('mode switch and clear cancel pending name searches', () async {
+    cubit.setMode(SearchMode.search);
+    when(() => api.searchMeals(any())).thenAnswer((_) async => const []);
+
+    cubit.searchChanged('chicken');
+    cubit.setMode(SearchMode.category);
+    await Future<void>.delayed(
+      SearchCubit.nameSearchDebounce + const Duration(milliseconds: 100),
+    );
+    verifyNever(() => api.searchMeals(any()));
+
+    cubit.setMode(SearchMode.search);
+    cubit.searchChanged('pasta');
+    cubit.clear();
+    await Future<void>.delayed(
+      SearchCubit.nameSearchDebounce + const Duration(milliseconds: 100),
+    );
+    verifyNever(() => api.searchMeals(any()));
+  });
+
+  test('discovery selection fetches once and typing never calls API', () async {
+    cubit.setMode(SearchMode.category);
+    cubit.searchChanged('ch');
+
+    expect(cubit.state.query, 'ch');
+    verifyNever(() => api.getMealsByCategory(any()));
+
+    const meal = MealModel(
+      idMeal: '4',
+      strMeal: 'Chicken Curry',
+      strMealThumb: 'https://example.com/curry.jpg',
+      strCategory: 'Chicken',
+    );
+    when(
+      () => api.getMealsByCategory('Chicken'),
+    ).thenAnswer((_) async => const [meal]);
+    when(() => database.cacheMeals(any())).thenAnswer((_) async {});
+
+    final loaded = await cubit.select('Chicken');
+
+    expect(loaded, isTrue);
+    expect(cubit.state.meals, const [meal]);
+
+    cubit.searchChanged('Curry');
+    verify(() => api.getMealsByCategory('Chicken')).called(1);
+  });
+
+  test('resetDiscovery clears selection, query, and fetched meals', () {
+    cubit.setMode(SearchMode.category);
+    cubit.searchChanged('Chicken');
+
+    cubit.resetDiscovery();
+
+    expect(cubit.state.mode, SearchMode.category);
+    expect(cubit.state.query, isEmpty);
+    expect(cubit.state.selectedValue, isNull);
+    expect(cubit.state.meals, isEmpty);
+    expect(cubit.state.hasSearched, isFalse);
+    expect(cubit.state.isLoading, isFalse);
+  });
 }

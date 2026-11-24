@@ -22,9 +22,7 @@ class AiRemoteDataSource {
   final DioClient _aiDioClient;
   final MealApiService _mealApiService;
 
-  Future<MealAnalysisResult> analyzeMeal(
-    MealAnalysisRequest request,
-  ) async {
+  Future<MealAnalysisResult> analyzeMeal(MealAnalysisRequest request) async {
     _ensureConfigured();
     _validateRequest(request);
 
@@ -85,7 +83,8 @@ class AiRemoteDataSource {
   void _ensureConfigured() {
     if (!AiApiConfig.isConfigured) {
       throw const ApiException(
-        message: 'AI service is not connected yet. Configure AI_API_BASE_URL '
+        message:
+            'AI service is not connected yet. Configure AI_API_BASE_URL '
             'with your backend URL to enable this feature.',
       );
     }

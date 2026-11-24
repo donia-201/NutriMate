@@ -7,6 +7,8 @@ import '../../data/dataresource/meal_api_services.dart';
 import 'search_state.dart';
 
 class SearchCubit extends Cubit<SearchState> {
+  static const Duration nameSearchDebounce = Duration(milliseconds: 700);
+
   SearchCubit({
     MealApiService? apiService,
     LocalDatabaseService? databaseService,
@@ -21,6 +23,8 @@ class SearchCubit extends Cubit<SearchState> {
 
   void setMode(SearchMode mode) {
     _debounce?.cancel();
+    _debounce = null;
+    ++_requestId;
     emit(
       state.copyWith(
         mode: mode,
@@ -28,12 +32,29 @@ class SearchCubit extends Cubit<SearchState> {
         meals: const [],
         clearError: true,
         hasSearched: false,
+        isLoading: false,
+        isTyping: false,
       ),
     );
   }
 
   void searchChanged(String value) {
     _debounce?.cancel();
+    ++_requestId;
+    if (state.mode != SearchMode.search) {
+      emit(
+        state.copyWith(
+          query: value,
+          clearSelectedValue: true,
+          clearError: true,
+          hasSearched: false,
+          isLoading: false,
+          isTyping: false,
+        ),
+      );
+      _debounce = null;
+      return;
+    }
     emit(
       state.copyWith(
         query: value,
@@ -41,11 +62,19 @@ class SearchCubit extends Cubit<SearchState> {
         meals: const [],
         clearError: true,
         hasSearched: false,
+        isLoading: false,
+        isTyping: value.trim().isNotEmpty && state.mode == SearchMode.search,
       ),
     );
     final query = value.trim();
-    if (query.isEmpty) return;
-    _debounce = Timer(const Duration(milliseconds: 350), () {
+    if (query.isEmpty || state.mode != SearchMode.search) {
+      _debounce = null;
+      emit(state.copyWith(isTyping: false));
+      return;
+    }
+    _debounce = Timer(nameSearchDebounce, () {
+      _debounce = null;
+      if (isClosed) return;
       search(query);
     });
   }
@@ -53,12 +82,15 @@ class SearchCubit extends Cubit<SearchState> {
   Future<void> submit(String value) {
     _debounce?.cancel();
     _debounce = null;
+    if (isClosed) return Future.value();
+    if (state.mode != SearchMode.search) return Future.value();
     return search(value);
   }
 
   void clear() {
     _debounce?.cancel();
     _debounce = null;
+    ++_requestId;
     emit(
       state.copyWith(
         query: '',
@@ -66,19 +98,52 @@ class SearchCubit extends Cubit<SearchState> {
         meals: const [],
         clearError: true,
         hasSearched: false,
+        isLoading: false,
+        isTyping: false,
       ),
     );
   }
 
-  Future<void> select(String value) => search(value, selectedValue: value);
+  void resetDiscovery() {
+    if (isClosed) return;
+    _debounce?.cancel();
+    _debounce = null;
+    ++_requestId;
+    emit(
+      state.copyWith(
+        clearSelectedValue: true,
+        query: '',
+        meals: const [],
+        isLoading: false,
+        clearError: true,
+        hasSearched: false,
+        isTyping: false,
+      ),
+    );
+  }
+
+  void cancelPendingSearch() {
+    _debounce?.cancel();
+    _debounce = null;
+    ++_requestId;
+  }
+
+  Future<bool> select(String value) async {
+    if (isClosed) return false;
+    await search(value, selectedValue: value);
+    if (isClosed) return false;
+    return state.errorMessage == null;
+  }
 
   Future<void> search(String value, {String? selectedValue}) async {
+    if (isClosed) return;
     final query = value.trim();
     if (query.isEmpty) return;
     final requestId = ++_requestId;
     emit(
       state.copyWith(
         isLoading: true,
+        isTyping: false,
         query: query,
         selectedValue: selectedValue,
         clearError: true,

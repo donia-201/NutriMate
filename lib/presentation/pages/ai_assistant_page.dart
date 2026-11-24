@@ -19,23 +19,16 @@ import '../widgets/ai/analysis_loading_card.dart';
 import '../widgets/ai/dietary_preferences_widget.dart';
 import '../widgets/ai/meal_analysis_cards.dart';
 
-enum AiAssistantMode {
-  mealAnalysis,
-  healthyAlternatives,
-}
+enum AiAssistantMode { mealAnalysis, healthyAlternatives }
 
 /// The screen the user is looking at. It is derived from the cubit state:
 /// ask -> loading -> analysis -> alternatives.
-enum _AiView {
-  input,
-  loading,
-  analysis,
-  alternatives,
-}
+enum _AiView { input, loading, analysis, alternatives }
 
 class AiAssistantPage extends StatefulWidget {
   final String? initialMealDescription;
   final AiAssistantMode initialMode;
+  final bool embedded;
 
   /// Called after the page closes itself because the user tapped another
   /// tab in the bottom bar. The home shell uses it to switch tabs.
@@ -46,6 +39,7 @@ class AiAssistantPage extends StatefulWidget {
     this.initialMealDescription,
     this.initialMode = AiAssistantMode.mealAnalysis,
     this.onBottomNavTap,
+    this.embedded = false,
   });
 
   @override
@@ -58,7 +52,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   final TextEditingController _mealController = TextEditingController();
   final TextEditingController _additionalRequestController =
-  TextEditingController();
+      TextEditingController();
 
   AiAssistantMode _selectedMode = AiAssistantMode.mealAnalysis;
   Set<String> _selectedPreferences = {};
@@ -131,7 +125,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
       case AiChatStatus.initial:
       case AiChatStatus.failure:
-      // A failed "healthier recipes" request keeps the analysis on screen.
+        // A failed "healthier recipes" request keeps the analysis on screen.
         return _cameFromAnalysis && _lastAnalysis != null
             ? _AiView.analysis
             : _AiView.input;
@@ -150,7 +144,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
       if (_cameFromAnalysis && _lastAnalysis != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(state.errorMessage ?? 'Something went wrong.')),
+          SnackBar(
+            content: Text(state.errorMessage ?? 'Something went wrong.'),
+          ),
         );
       } else if (request != null && _mealController.text.isEmpty) {
         // Give the text back so the user can retry or edit it.
@@ -187,7 +183,11 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   void _goBack(_AiView view) {
     switch (view) {
       case _AiView.input:
-        Navigator.maybePop(context);
+        if (widget.embedded) {
+          widget.onBottomNavTap?.call(0);
+        } else if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
         return;
 
       case _AiView.loading:
@@ -222,9 +222,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
     if (meal.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your meal or food first.'),
-        ),
+        const SnackBar(content: Text('Please enter your meal or food first.')),
       );
       return;
     }
@@ -234,8 +232,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     final request = MealAnalysisRequest(
       mealDescription: meal,
       dietaryPreferences: _selectedPreferences.toList(),
-      additionalRequest:
-      _isMealAnalysis ? null : _additionalRequestController.text.trim(),
+      additionalRequest: _isMealAnalysis
+          ? null
+          : _additionalRequestController.text.trim(),
     );
 
     setState(() {
@@ -371,19 +370,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
 
         return PopScope(
-          canPop: view == _AiView.input,
+          canPop: view == _AiView.input && !widget.embedded,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) _goBack(view);
           },
           child: Scaffold(
             // Background comes from the Theme (Light / Dark).
             appBar: _buildAppBar(view, state),
-            body: SafeArea(
-              top: false,
-              child: _buildBody(view, state),
-            ),
+            body: SafeArea(top: false, child: _buildBody(view, state)),
             // Hidden while typing so it does not squeeze the input.
-            bottomNavigationBar: keyboardOpen
+            bottomNavigationBar: widget.embedded || keyboardOpen
                 ? null
                 : BottomNavBar(
                     currentIndex: 2,
@@ -404,11 +400,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(
-          Icons.arrow_back_ios_new,
-          size: 19,
-          color: _c.onSurface,
-        ),
+        icon: Icon(Icons.arrow_back_ios_new, size: 19, color: _c.onSurface),
         onPressed: () => _goBack(view),
       ),
       title: Column(
@@ -466,12 +458,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                 _buildModeSelector(),
                 const SizedBox(height: 20),
                 AssistantBubble(
-                  title: 'Hi there, what’s on your plate?',
+                  title: "Hi there, what's on your plate?",
                   message: _isMealAnalysis
-                      ? 'Describe a meal and I’ll estimate its nutrition, '
-                      'then suggest practical swaps.'
-                      : 'Tell me a food you love. We’ll find a nourishing '
-                      'alternative without losing the joy.',
+                      ? "Describe a meal and I'll estimate its nutrition, "
+                            'then suggest practical swaps.'
+                      : "Tell me a food you love. We'll find a nourishing "
+                            'alternative without losing the joy.',
                 ),
                 if (state.status == AiChatStatus.failure) ...[
                   const SizedBox(height: 14),
@@ -515,10 +507,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                   ? 'Estimates only. Check ingredients for allergy safety.'
                   : 'Suggestions consider your food and dietary preferences.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                color: _c.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 11, color: _c.onSurfaceVariant),
             ),
           ],
         ),
@@ -543,10 +532,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           hintText: _isMealAnalysis
               ? 'Describe your meal...'
               : 'Tell me a food you love...',
-          hintStyle: TextStyle(
-            fontSize: 13.5,
-            color: _c.onSurfaceVariant,
-          ),
+          hintStyle: TextStyle(fontSize: 13.5, color: _c.onSurfaceVariant),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -559,10 +545,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   Widget _buildModeSelector() {
     return Row(
       children: [
-        _modeButton(
-          title: 'Meal Analysis',
-          mode: AiAssistantMode.mealAnalysis,
-        ),
+        _modeButton(title: 'Meal Analysis', mode: AiAssistantMode.mealAnalysis),
         const SizedBox(width: 10),
         _modeButton(
           title: 'Healthy Alternatives',
@@ -572,10 +555,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     );
   }
 
-  Widget _modeButton({
-    required String title,
-    required AiAssistantMode mode,
-  }) {
+  Widget _modeButton({required String title, required AiAssistantMode mode}) {
     final selected = _selectedMode == mode;
 
     return Expanded(
@@ -630,10 +610,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             hintText: 'e.g. high protein, ready in 20 minutes...',
             filled: true,
             fillColor: _c.surface,
-            hintStyle: TextStyle(
-              color: _c.onSurfaceVariant,
-              fontSize: 12,
-            ),
+            hintStyle: TextStyle(color: _c.onSurfaceVariant, fontSize: 12),
             contentPadding: const EdgeInsets.all(15),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
@@ -655,10 +632,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       ),
       child: Text(
         message ?? 'Something went wrong.',
-        style: TextStyle(
-          color: _c.error,
-          fontSize: 13,
-        ),
+        style: TextStyle(color: _c.error, fontSize: 13),
       ),
     );
   }
@@ -771,13 +745,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
     final summary = count == 0
         ? ''
-        : '${_cameFromAnalysis ? 'Your meal analysis · ' : ''}'
-        '$count healthier ${count == 1 ? 'recipe' : 'recipes'}';
+        : '${_cameFromAnalysis ? 'Your meal analysis - ' : ''}'
+              '$count healthier ${count == 1 ? 'recipe' : 'recipes'}';
 
     return _buildScrollableChat(
       children: [
         const AiNoticeBanner(
-          message: 'Suggestions are ideas, not rules. Check ingredients '
+          message:
+              'Suggestions are ideas, not rules. Check ingredients '
               'against your dietary needs and allergies.',
         ),
         const SizedBox(height: 14),
@@ -832,12 +807,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       ),
       child: Text(
         'No verified recipe alternatives were found. '
-            'Try adjusting your meal description or dietary preferences.',
-        style: TextStyle(
-          fontSize: 13,
-          height: 1.5,
-          color: _c.onSurfaceVariant,
-        ),
+        'Try adjusting your meal description or dietary preferences.',
+        style: TextStyle(fontSize: 13, height: 1.5, color: _c.onSurfaceVariant),
       ),
     );
   }
@@ -869,16 +840,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
-          top: BorderSide(
-            color: _c.outline.withValues(alpha: 0.4),
-            width: 0.8,
-          ),
+          top: BorderSide(color: _c.outline.withValues(alpha: 0.4), width: 0.8),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: children,
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 
@@ -918,10 +883,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             ],
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ],
         ),

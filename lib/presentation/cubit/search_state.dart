@@ -10,6 +10,7 @@ class SearchState {
   final bool isLoading;
   final String? errorMessage;
   final bool hasSearched;
+  final bool isTyping;
 
   const SearchState({
     this.mode = SearchMode.category,
@@ -19,6 +20,7 @@ class SearchState {
     this.isLoading = false,
     this.errorMessage,
     this.hasSearched = false,
+    this.isTyping = false,
   });
 
   bool get isIdle => !isLoading && !hasSearched && errorMessage == null;
@@ -33,6 +35,7 @@ class SearchState {
     String? errorMessage,
     bool clearError = false,
     bool? hasSearched,
+    bool? isTyping,
   }) => SearchState(
     mode: mode ?? this.mode,
     selectedValue: clearSelectedValue
@@ -43,5 +46,6 @@ class SearchState {
     isLoading: isLoading ?? this.isLoading,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     hasSearched: hasSearched ?? this.hasSearched,
+    isTyping: isTyping ?? this.isTyping,
   );
 }

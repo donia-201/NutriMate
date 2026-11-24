@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 /// Chat bubble that shows a message from the assistant.
 class AssistantBubble extends StatelessWidget {
   final String title;
@@ -64,11 +63,7 @@ class UserBubble extends StatelessWidget {
   final String text;
   final String time;
 
-  const UserBubble({
-    super.key,
-    required this.text,
-    required this.time,
-  });
+  const UserBubble({super.key, required this.text, required this.time});
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +88,7 @@ class UserBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                time.isEmpty ? 'You' : 'You · $time',
+                time.isEmpty ? 'You' : 'You - $time',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -125,7 +120,7 @@ class AiNoticeBanner extends StatelessWidget {
     super.key,
     this.message =
         'AI estimate: values are approximate and not medical advice. '
-            'Check ingredients for allergy safety.',
+        'Check ingredients for allergy safety.',
   });
 
   @override

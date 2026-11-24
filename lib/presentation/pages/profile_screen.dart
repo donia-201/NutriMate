@@ -11,10 +11,13 @@ import 'package:nutri_mate/presentation/pages/planner_page.dart';
 import 'package:nutri_mate/core/guest_guard.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final ValueChanged<int>? onDestinationChanged;
 
-  void _soon(BuildContext context) => ScaffoldMessenger.of(context)
-      .showSnackBar(const SnackBar(content: Text('Coming soon')));
+  const ProfileScreen({super.key, this.onDestinationChanged});
+
+  void _soon(BuildContext context) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(const SnackBar(content: Text('Coming soon')));
 
   void _openEditProfile(BuildContext context) => Navigator.push(
     context,
@@ -31,7 +34,10 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final profile = context.watch<ProfileCubit>().state;
-    final isDark = profile.themeMode == ThemeMode.dark;
+    final isDark =
+        profile.themeMode == ThemeMode.dark ||
+        (profile.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
     return Scaffold(
       appBar: AppBar(
@@ -45,117 +51,186 @@ class ProfileScreen extends StatelessWidget {
         children: [
           // ---------- Header ----------
           AppCard(
-            child: Row(children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: c.outline.withValues(alpha: .4),
-                child: Icon(Icons.person_outline, size: 36, color: c.onSurface),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.titleBold
-                          .copyWith(fontSize: 20, color: c.onSurface),
-                    ),
-                    if (profile.email.isNotEmpty)
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: c.outline.withValues(alpha: .4),
+                  child: Icon(
+                    Icons.person_outline,
+                    size: 36,
+                    color: c.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        profile.email,
+                        profile.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                        style: AppTheme.titleBold.copyWith(
+                          fontSize: 20,
+                          color: c.onSurface,
+                        ),
                       ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () => _openEditProfile(context),
-                      child: Text(
-                        'Edit Profile',
-                        style: AppTheme.label.copyWith(color: c.primary),
+                      if (profile.email.isNotEmpty)
+                        Text(
+                          profile.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.small.copyWith(
+                            color: c.onSurfaceVariant,
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => _openEditProfile(context),
+                        child: Text(
+                          'Edit Profile',
+                          style: AppTheme.label.copyWith(color: c.primary),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
           // ---------- Menu (meals + dark mode + about + logout) ----------
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(children: [
-              _MenuTile(
-                Icons.favorite_border,
-                'Favorite Meals',
-                    () async {
-                  if (!await requireSignedIn(context, feature: 'Favorites')) return;
+            child: Column(
+              children: [
+                _MenuTile(Icons.favorite_border, 'Favorite Meals', () async {
+                  if (!await requireSignedIn(context, feature: 'Favorites')) {
+                    return;
+                  }
                   if (!context.mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FavoritesScreen()),
-                  );
-                },
-              ),
-              _MenuTile(
-                Icons.calendar_today_outlined,
-                'Planned Meals',
-                    () async {
-                  if (!await requireSignedIn(context, feature: 'Meal planning')) return;
-                  if (!context.mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => PlannerPage()),
-                  );
-                },
-              ),
-              _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
-              SwitchListTile(
-                secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),
-                title: Text(
-                  'Dark mode',
-                  style: AppTheme.label.copyWith(color: c.onSurface),
+                  if (onDestinationChanged != null) {
+                    Navigator.of(context).pop();
+                    onDestinationChanged!(1);
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FavoritesScreen(),
+                      ),
+                    );
+                  }
+                }),
+                _MenuTile(
+                  Icons.calendar_today_outlined,
+                  'Planned Meals',
+                  () async {
+                    if (!await requireSignedIn(
+                      context,
+                      feature: 'Meal planning',
+                    )) {
+                      return;
+                    }
+                    if (!context.mounted) return;
+                    if (onDestinationChanged != null) {
+                      Navigator.of(context).pop();
+                      onDestinationChanged!(3);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => PlannerPage()),
+                      );
+                    }
+                  },
                 ),
-                value: isDark,
-                onChanged: (v) => context.read<ProfileCubit>().setDarkMode(v),
-              ),
-              _MenuTile(
-                Icons.info_outline,
-                'About',
-                    () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                _MenuTile(Icons.history, 'Meal History', () => _soon(context)),
+                SwitchListTile(
+                  secondary: Icon(Icons.dark_mode_outlined, color: c.onSurface),
+                  title: Text(
+                    'Dark mode',
+                    style: AppTheme.label.copyWith(color: c.onSurface),
+                  ),
+                  value: isDark,
+                  onChanged: (v) => context.read<ProfileCubit>().setDarkMode(v),
                 ),
-              ),
-              _MenuTile(
-                Icons.logout,
-                'Logout',
-                    () => _logout(context),
-                trailing: false,
-              ),
-            ]),
+                SwitchListTile(
+                  secondary: Icon(
+                    Icons.notifications_outlined,
+                    color: c.onSurface,
+                  ),
+                  title: Text(
+                    'Notifications',
+                    style: AppTheme.label.copyWith(color: c.onSurface),
+                  ),
+                  subtitle: Text(
+                    profile.notificationsEnabled
+                        ? 'Reminders on - Breakfast, lunch, and dinner'
+                        : 'Reminders off - Notifications are paused',
+                    style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                  ),
+                  value: profile.notificationsEnabled,
+                  onChanged: (enabled) async {
+                    final granted = await context
+                        .read<ProfileCubit>()
+                        .setNotificationsEnabled(enabled);
+                    if (!context.mounted) return;
+                    if (enabled && !granted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Notification permission is disabled. Enable it in system settings.',
+                          ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            enabled
+                                ? 'Meal notifications turned on.'
+                                : 'Meal notifications turned off.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                _MenuTile(
+                  Icons.info_outline,
+                  'About',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  ),
+                ),
+                _MenuTile(
+                  Icons.logout,
+                  'Logout',
+                  () => _logout(context),
+                  trailing: false,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
-
-
 
           // ---------- Sync status ----------
           AppCard(
             padding: const EdgeInsets.all(12),
-            child: Row(children: [
-              Icon(Icons.sync, size: 18, color: c.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Synced across devices · Simulated sync status',
-                  style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+            child: Row(
+              children: [
+                Icon(Icons.sync, size: 18, color: c.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Synced across devices - Simulated sync status',
+                    style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ],
       ),

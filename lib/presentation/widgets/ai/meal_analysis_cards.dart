@@ -70,7 +70,10 @@ class NutritionCard extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -116,7 +119,11 @@ class NutritionCard extends StatelessWidget {
             runSpacing: 6,
             children: segments.map((segment) {
               final percent = (segment.$1 / total * 100).round();
-              return _legendItem(context, segment.$2, '${segment.$3} $percent%');
+              return _legendItem(
+                context,
+                segment.$2,
+                '${segment.$3} $percent%',
+              );
             }).toList(),
           ),
         ],
@@ -170,9 +177,17 @@ class NutritionCard extends StatelessWidget {
               children: [
                 _stat(context, _number(nutrition.calories), 'kcal'),
                 const SizedBox(width: 8),
-                _stat(context, _number(nutrition.protein, unit: 'g'), 'Protein'),
+                _stat(
+                  context,
+                  _number(nutrition.protein, unit: 'g'),
+                  'Protein',
+                ),
                 const SizedBox(width: 8),
-                _stat(context, _number(nutrition.carbohydrates, unit: 'g'), 'Carbs'),
+                _stat(
+                  context,
+                  _number(nutrition.carbohydrates, unit: 'g'),
+                  'Carbs',
+                ),
                 const SizedBox(width: 8),
                 _stat(context, _number(nutrition.fat, unit: 'g'), 'Fat'),
               ],
@@ -181,7 +196,10 @@ class NutritionCard extends StatelessWidget {
           ] else
             Text(
               'Nutrition values are not available for this meal.',
-              style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           if (notes.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -221,7 +239,7 @@ class HealthScoreCard extends StatelessWidget {
     if (score >= 80) return 'A great choice';
     if (score >= 60) return 'A balanced start';
     if (score >= 40) return 'Room to improve';
-    return 'Let’s rebalance';
+    return "Let's rebalance";
   }
 
   static Color _color(BuildContext context, int score) {
@@ -256,7 +274,9 @@ class HealthScoreCard extends StatelessWidget {
                   CircularProgressIndicator(
                     value: score / 100,
                     strokeWidth: 7,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     color: _color(context, score),
                   ),
                   Center(
@@ -275,7 +295,9 @@ class HealthScoreCard extends StatelessWidget {
                           '/100',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],

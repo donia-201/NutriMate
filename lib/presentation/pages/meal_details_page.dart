@@ -16,7 +16,8 @@ import '../cubit/ai_chat_cubit.dart';
 import 'ai_assistant_page.dart';
 import 'add_to_planner_sheet.dart';
 import 'cooking_details_page.dart';
-import '../widgets/bottom_nav.dart';
+import '../cubit/favorites_cubit.dart';
+import '../cubit/favorites_state.dart';
 
 class MealDetailsPage extends StatefulWidget {
   final MealModel meal;
@@ -35,7 +36,6 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
   late MealModel _meal;
   NutritionModel? _nutrition;
   bool _isLoading = true;
-  bool _isFavorite = false;
   bool _isSavingFavorite = false;
   bool _isLogging = false;
   String? _error;
@@ -68,11 +68,11 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             _detailsNotice = 'Some recipe details could not be loaded.';
           }
         } catch (_) {
-          _detailsNotice = 'Some recipe details could not be loaded. Check your connection and retry.';
+          _detailsNotice =
+              'Some recipe details could not be loaded. Check your connection and retry.';
         }
       }
 
-      final favorite = await _database.isFavorite(_uid, _meal.idMeal);
       NutritionModel? nutrition;
       if (_meal.ingredients.isNotEmpty) {
         try {
@@ -86,7 +86,6 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
 
       if (!mounted) return;
       setState(() {
-        _isFavorite = favorite;
         _nutrition = nutrition;
         _isLoading = false;
       });
@@ -103,13 +102,25 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     if (_isSavingFavorite) return;
     setState(() => _isSavingFavorite = true);
     try {
-      await _database.setFavorite(_uid, _meal, !_isFavorite);
+      final favorites = context.read<FavoritesCubit>();
+      final ok = await favorites.toggle(_meal);
       if (!mounted) return;
+      if (!ok) {
+        setState(() => _isSavingFavorite = false);
+        _message(
+          favorites.state.errorMessage ??
+              'Could not update favorites. Please try again.',
+        );
+        return;
+      }
       setState(() {
-        _isFavorite = !_isFavorite;
         _isSavingFavorite = false;
       });
-      _message(_isFavorite ? 'Added to your favorites.' : 'Removed from favorites.');
+      _message(
+        favorites.isFavorite(_meal.idMeal)
+            ? 'Added to your favorites.'
+            : 'Removed from favorites.',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _isSavingFavorite = false);
@@ -185,215 +196,213 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        title: const Text('Recipe'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
+    return BlocBuilder<FavoritesCubit, FavoritesState>(
+      builder: (context, favorites) {
+        final isFavorite = favorites.ids.contains(_meal.idMeal);
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            title: const Text('Recipe'),
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
               ? _buildError(colors)
-              : _buildDetails(colors),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: 0,
-        onTap: (_) { Navigator.maybePop(context); },
-      ),
+              : _buildDetails(colors, isFavorite),
+        );
+      },
     );
   }
 
   Widget _buildError(ColorScheme colors) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.restaurant_menu, size: 42),
+          const SizedBox(height: 12),
+          Text(_error!, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _loadMeal,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try again'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildDetails(ColorScheme colors, bool isFavorite) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Image.network(
+          _meal.strMealThumb,
+          height: 245,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(
+            height: 245,
+            color: colors.surfaceContainerHighest,
+            child: const Icon(Icons.restaurant, size: 54),
+          ),
+        ),
+      ),
+      Transform.translate(
+        offset: const Offset(0, -28),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.07),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
             children: [
-              const Icon(Icons.restaurant_menu, size: 42),
-              const SizedBox(height: 12),
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadMeal,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try again'),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _meal.strMeal,
+                      style: AppTheme.titleBold.copyWith(
+                        color: colors.onSurface,
+                        fontSize: 23,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      [
+                        _meal.strCategory ?? 'Recipe',
+                        _meal.strArea ?? 'International',
+                      ].join(' - '),
+                      style: AppTheme.small.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _isSavingFavorite ? null : _toggleFavorite,
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? Colors.redAccent : colors.primary,
+                  size: 29,
+                ),
               ),
             ],
           ),
         ),
-      );
-
-  Widget _buildDetails(ColorScheme colors) => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Image.network(
-              _meal.strMealThumb,
-              height: 245,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                height: 245,
-                color: colors.surfaceContainerHighest,
-                child: const Icon(Icons.restaurant, size: 54),
-              ),
-            ),
-          ),
-          Transform.translate(
-            offset: const Offset(0, -28),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 18, 14, 18),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(26),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.07),
-                    blurRadius: 18,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _meal.strMeal,
-                          style: AppTheme.titleBold.copyWith(
-                            color: colors.onSurface,
-                            fontSize: 23,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          [
-                            _meal.strCategory ?? 'Recipe',
-                            _meal.strArea ?? 'International',
-                          ].join(' • '),
-                          style: AppTheme.small.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _isSavingFavorite ? null : _toggleFavorite,
-                    icon: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.redAccent : colors.primary,
-                      size: 29,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_detailsNotice != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                _detailsNotice!,
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-              ),
-            ),
-          Transform.translate(
-            offset: const Offset(0, -18),
-            child: _nutritionCard(colors),
-          ),
-          const SizedBox(height: 2),
-          SizedBox(
-            height: 54,
-            child: FilledButton(
-              onPressed: () async {
-                await showAddToPlannerSheet(
-                  context,
-                  _meal,
-                  calories: _nutrition?.calories?.round() ?? 0,
-                );
-              },
-              child: const Text('Add to Planner'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isSavingFavorite ? null : _toggleFavorite,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                  ),
-                  child: Text(
-                    _isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isLogging ? null : _logAsEaten,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                  ),
-                  child: Text(_isLogging ? 'Logging...' : 'Log as eaten'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-  height: 52,
-  child: FilledButton.icon(
-    onPressed: _openHealthierAlternatives,
-    style: FilledButton.styleFrom(
-      backgroundColor: colors.primary,
-      foregroundColor: colors.onPrimary,
-      disabledBackgroundColor: colors.primary.withValues(alpha: 0.5),
-      disabledForegroundColor: colors.onPrimary.withValues(alpha: 0.7),
-      minimumSize: const Size.fromHeight(52),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
       ),
-    ),
-    icon: const Icon(Icons.auto_awesome),
-    label: const Text('Make it healthier with AI'),
-  ),
-),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CookingDetailsPage(meal: _meal),
+      if (_detailsNotice != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            _detailsNotice!,
+            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+          ),
+        ),
+      Transform.translate(
+        offset: const Offset(0, -18),
+        child: _nutritionCard(colors),
+      ),
+      const SizedBox(height: 2),
+      SizedBox(
+        height: 54,
+        child: FilledButton(
+          onPressed: () async {
+            await showAddToPlannerSheet(
+              context,
+              _meal,
+              calories: _nutrition?.calories?.round() ?? 0,
+            );
+          },
+          child: const Text('Add to Planner'),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _isSavingFavorite ? null : _toggleFavorite,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+              ),
+              child: Text(
+                isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+                textAlign: TextAlign.center,
               ),
             ),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Ingredients, steps & cooking video',
-                      style: AppTheme.small.copyWith(
-                        color: colors.onSurfaceVariant,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.keyboard_arrow_down, color: colors.onSurfaceVariant),
-                ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _isLogging ? null : _logAsEaten,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
               ),
+              child: Text(_isLogging ? 'Logging...' : 'Log as eaten'),
             ),
           ),
         ],
-      );
+      ),
+      const SizedBox(height: 12),
+      SizedBox(
+        height: 52,
+        child: FilledButton.icon(
+          onPressed: _openHealthierAlternatives,
+          style: FilledButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
+            disabledBackgroundColor: colors.primary.withValues(alpha: 0.5),
+            disabledForegroundColor: colors.onPrimary.withValues(alpha: 0.7),
+            minimumSize: const Size.fromHeight(52),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          icon: const Icon(Icons.auto_awesome),
+          label: const Text('Make it healthier with AI'),
+        ),
+      ),
+      const SizedBox(height: 20),
+      InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => CookingDetailsPage(meal: _meal)),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ingredients, steps & cooking video',
+                  style: AppTheme.small.copyWith(
+                    color: colors.onSurfaceVariant,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              Icon(Icons.keyboard_arrow_down, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
 
   Widget _nutritionCard(ColorScheme colors) {
     final nutrition = _nutrition;
@@ -414,7 +423,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Estimated • ${_nutrition?.scope == 'per_serving' ? 'per serving' : 'whole recipe'}',
+            'Estimated - ${_nutrition?.scope == 'per_serving' ? 'per serving' : 'whole recipe'}',
             style: AppTheme.titleBold.copyWith(
               fontSize: 17,
               color: colors.onSurface,
@@ -451,10 +460,10 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
 
   Widget _macro(ColorScheme colors, String label, double? value, String unit) {
     final display = value == null
-        ? '—'
+        ? '-'
         : (value == value.roundToDouble()
-            ? value.toStringAsFixed(0)
-            : value.toStringAsFixed(1));
+              ? value.toStringAsFixed(0)
+              : value.toStringAsFixed(1));
     return Expanded(
       child: Column(
         children: [
@@ -464,10 +473,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: colors.outlineVariant,
-                width: 3,
-              ),
+              border: Border.all(color: colors.outlineVariant, width: 3),
             ),
             child: FittedBox(
               child: Text(
@@ -483,18 +489,12 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: colors.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 3),
           Text(
             label == 'Calories' ? 'kcal' : unit,
-            style: TextStyle(
-              fontSize: 10,
-              color: colors.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant),
           ),
         ],
       ),

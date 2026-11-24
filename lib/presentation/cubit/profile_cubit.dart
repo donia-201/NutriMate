@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/meal_notification_service.dart';
 
 class ProfileState {
   final String name;
@@ -11,6 +12,7 @@ class ProfileState {
   final String dietary;
   final int calorieGoal;
   final ThemeMode themeMode;
+  final bool notificationsEnabled;
 
   const ProfileState({
     required this.name,
@@ -18,6 +20,7 @@ class ProfileState {
     required this.dietary,
     required this.calorieGoal,
     required this.themeMode,
+    this.notificationsEnabled = true,
   });
 
   ProfileState copyWith({
@@ -26,6 +29,7 @@ class ProfileState {
     String? dietary,
     int? calorieGoal,
     ThemeMode? themeMode,
+    bool? notificationsEnabled,
   }) {
     return ProfileState(
       name: name ?? this.name,
@@ -33,6 +37,7 @@ class ProfileState {
       dietary: dietary ?? this.dietary,
       calorieGoal: calorieGoal ?? this.calorieGoal,
       themeMode: themeMode ?? this.themeMode,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 }
@@ -42,6 +47,8 @@ class ProfileCubit extends Cubit<ProfileState> {
   static const _calorieKey = 'calorieGoal';
   static const _themeKey = 'themeMode';
   static const _onboardedKey = 'onboardingSeen';
+  static const notificationsKey = 'notificationsEnabled';
+  static const notificationsPermissionAskedKey = 'notificationPermissionAsked';
 
   // For the SharedPreferences allowList.
   static const keys = {
@@ -49,6 +56,8 @@ class ProfileCubit extends Cubit<ProfileState> {
     _calorieKey,
     _themeKey,
     _onboardedKey,
+    notificationsKey,
+    notificationsPermissionAskedKey,
   };
 
   static const dietOptions = [
@@ -63,21 +72,14 @@ class ProfileCubit extends Cubit<ProfileState> {
   final FirebaseAuth _auth;
   StreamSubscription<User?>? _userSub;
 
-  ProfileCubit(
-      SharedPreferencesWithCache prefs, {
-        FirebaseAuth? auth,
-      }) : this._(prefs, auth ?? FirebaseAuth.instance);
+  ProfileCubit(SharedPreferencesWithCache prefs, {FirebaseAuth? auth})
+    : this._(prefs, auth ?? FirebaseAuth.instance);
 
-  ProfileCubit._(this._prefs, this._auth)
-      : super(_load(_prefs, _auth)) {
+  ProfileCubit._(this._prefs, this._auth) : super(_load(_prefs, _auth)) {
     // Keeps name/email in sync on sign-in, sign-out and profile updates.
     _userSub = _auth.userChanges().listen((user) {
-      emit(
-        state.copyWith(
-          name: nameFor(user),
-          email: user?.email ?? '',
-        ),
-      );
+      if (isClosed) return;
+      emit(state.copyWith(name: nameFor(user), email: user?.email ?? ''));
     });
   }
 
@@ -99,9 +101,9 @@ class ProfileCubit extends Cubit<ProfileState> {
   }
 
   static ProfileState _load(
-      SharedPreferencesWithCache prefs,
-      FirebaseAuth auth,
-      ) {
+    SharedPreferencesWithCache prefs,
+    FirebaseAuth auth,
+  ) {
     final user = auth.currentUser;
     final savedDiet = prefs.getString(_dietKey);
 
@@ -110,26 +112,24 @@ class ProfileCubit extends Cubit<ProfileState> {
       email: user?.email ?? '',
       dietary: dietOptions.contains(savedDiet) ? savedDiet! : 'None',
       calorieGoal: prefs.getInt(_calorieKey) ?? 2000,
-      themeMode: ThemeMode.values.asNameMap()[prefs.getString(_themeKey)] ??
+      themeMode:
+          ThemeMode.values.asNameMap()[prefs.getString(_themeKey)] ??
           ThemeMode.system,
+      notificationsEnabled: prefs.getBool(notificationsKey) ?? true,
     );
   }
 
   // Only accounts that sign in with email + password have a password to change.
   // Google and anonymous users don't.
   bool get canChangePassword =>
-      _auth.currentUser?.providerData.any(
-            (p) => p.providerId == 'password',
-      ) ??
-          false;
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ??
+      false;
 
   // Checks whether the user has already seen onboarding.
-  bool get onboardingSeen =>
-      _prefs.getBool(_onboardedKey) ?? false;
+  bool get onboardingSeen => _prefs.getBool(_onboardedKey) ?? false;
 
   // Marks onboarding as completed.
-  Future<void> markOnboardingSeen() =>
-      _prefs.setBool(_onboardedKey, true);
+  Future<void> markOnboardingSeen() => _prefs.setBool(_onboardedKey, true);
 
   Future<void> save({
     required String name,
@@ -145,14 +145,13 @@ class ProfileCubit extends Cubit<ProfileState> {
 
     await _prefs.setString(_dietKey, dietary);
     await _prefs.setInt(_calorieKey, calorieGoal);
+    if (isClosed) return;
 
     final shownName = _auth.currentUser?.displayName?.trim();
 
     emit(
       state.copyWith(
-        name: (shownName != null && shownName.isNotEmpty)
-            ? shownName
-            : name,
+        name: (shownName != null && shownName.isNotEmpty) ? shownName : name,
         dietary: dietary,
         calorieGoal: calorieGoal,
       ),
@@ -163,12 +162,18 @@ class ProfileCubit extends Cubit<ProfileState> {
     final mode = isDark ? ThemeMode.dark : ThemeMode.light;
 
     await _prefs.setString(_themeKey, mode.name);
+    if (isClosed) return;
 
-    emit(
-      state.copyWith(
-        themeMode: mode,
-      ),
-    );
+    emit(state.copyWith(themeMode: mode));
+  }
+
+  Future<bool> setNotificationsEnabled(bool enabled) async {
+    final service = MealNotificationService.instance;
+    final granted = await service.setEnabled(enabled);
+    await _prefs.setBool(notificationsKey, granted);
+    if (isClosed) return granted;
+    emit(state.copyWith(notificationsEnabled: granted));
+    return granted;
   }
 
   User _emailUser() {
@@ -186,10 +191,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     final user = _emailUser();
 
     await user.reauthenticateWithCredential(
-      EmailAuthProvider.credential(
-        email: user.email!,
-        password: password,
-      ),
+      EmailAuthProvider.credential(email: user.email!, password: password),
     );
   }
 
