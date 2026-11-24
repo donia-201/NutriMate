@@ -358,7 +358,6 @@ class _HomeViewState extends State<_HomeView> {
                                           () => _currentBottomNavIndex = index,
                                         );
                                       }
-                                      ;
                                     },
                                   ),
                                 ),
