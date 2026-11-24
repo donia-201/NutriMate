@@ -12,6 +12,7 @@ import '../../data/models/meal_model.dart';
 import '../cubit/ai_chat_cubit.dart';
 import '../cubit/ai_chat_state.dart';
 import '../cubit/favorites_cubit.dart';
+import '../widgets/bottom_nav.dart';
 import '../widgets/ai/ai_chat_bubbles.dart';
 import '../widgets/ai/alternative_recipe_card.dart';
 import '../widgets/ai/analysis_loading_card.dart';
@@ -36,10 +37,15 @@ class AiAssistantPage extends StatefulWidget {
   final String? initialMealDescription;
   final AiAssistantMode initialMode;
 
+  /// Called after the page closes itself because the user tapped another
+  /// tab in the bottom bar. The home shell uses it to switch tabs.
+  final ValueChanged<int>? onBottomNavTap;
+
   const AiAssistantPage({
     super.key,
     this.initialMealDescription,
     this.initialMode = AiAssistantMode.mealAnalysis,
+    this.onBottomNavTap,
   });
 
   @override
@@ -75,6 +81,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   @override
   void initState() {
     super.initState();
+    _selectedMode = widget.initialMode;
+    final initialMeal = widget.initialMealDescription?.trim();
+    if (initialMeal != null && initialMeal.isNotEmpty) {
+      _mealController.text = initialMeal;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _submitRequest();
+      });
+    }
     final favorites = context.read<FavoritesCubit>();
     _savedIds = favorites.state.ids;
     // بيتحدّث لوحده لما المفضلة تتغير أو الحساب يتغير.
@@ -354,6 +368,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       listener: _onStateChanged,
       builder: (context, state) {
         final view = _resolveView(state);
+        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
 
         return PopScope(
           canPop: view == _AiView.input,
@@ -367,6 +382,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
               top: false,
               child: _buildBody(view, state),
             ),
+            // Hidden while typing so it does not squeeze the input.
+            bottomNavigationBar: keyboardOpen
+                ? null
+                : BottomNavBar(
+                    currentIndex: 2,
+                    onTap: (index) {
+                      Navigator.of(context).pop();
+                      widget.onBottomNavTap?.call(index);
+                    },
+                  ),
           ),
         );
       },

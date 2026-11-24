@@ -108,8 +108,25 @@ class AppTheme {
       outline: AppColors.darkBorder,
       error: AppColors.error,
       surfaceContainerHighest: AppColors.darkElevated, // جديد
+      surfaceTint: Colors.transparent,
     ),
     textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.darkBackground,
+      foregroundColor: AppColors.darkTextPrimary,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+    ),
+    dividerTheme: const DividerThemeData(color: AppColors.darkBorder),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppColors.darkSurface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: AppColors.darkSurface,
+      surfaceTintColor: Colors.transparent,
+    ),
     listTileTheme: ListTileThemeData(
       tileColor: AppColors.darkSurface,
       textColor: AppColors.darkTextPrimary,

@@ -22,6 +22,9 @@ class BottomNavBar extends StatelessWidget {
   void _handleNavigation(BuildContext context, int index) {
     switch (index) {
       case 2:
+        // Already on the NutriAI screen.
+        if (currentIndex == 2) return;
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -49,7 +52,7 @@ class BottomNavBar extends StatelessWidget {
                   repository: repository,
                 );
               },
-              child: const AiAssistantPage(),
+              child: AiAssistantPage(onBottomNavTap: onTap),
             ),
           ),
         );
@@ -84,9 +87,9 @@ class BottomNavBar extends StatelessWidget {
             _buildNavItem(
               context,
               1,
-              Icons.search_outlined,
-              Icons.search,
-              "Search",
+              Icons.favorite_border,
+              Icons.favorite,
+              "Favorites",
             ),
             _buildNavItem(
               context,

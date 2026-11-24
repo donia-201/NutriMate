@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/app_colors.dart';
 
 /// Assistant card with pulsing placeholder blocks, shown while the AI works.
 class AnalysisLoadingCard extends StatefulWidget {
@@ -33,7 +32,7 @@ class _AnalysisLoadingCardState extends State<AnalysisLoadingCard>
       height: height,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFEFE2CD),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
     );
@@ -45,7 +44,7 @@ class _AnalysisLoadingCardState extends State<AnalysisLoadingCard>
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -53,22 +52,22 @@ class _AnalysisLoadingCardState extends State<AnalysisLoadingCard>
         children: [
           Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 height: 16,
                 width: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.primaryGreen,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.message,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),

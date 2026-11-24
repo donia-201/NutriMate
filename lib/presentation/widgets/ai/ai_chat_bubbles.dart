@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/app_colors.dart';
 
 /// Chat bubble that shows a message from the assistant.
 class AssistantBubble extends StatelessWidget {
@@ -19,7 +18,7 @@ class AssistantBubble extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -27,17 +26,17 @@ class AssistantBubble extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.auto_awesome,
-                color: AppColors.primaryGreen,
+                color: Theme.of(context).colorScheme.primary,
                 size: 19,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textDark,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -48,10 +47,10 @@ class AssistantBubble extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               height: 1.5,
-              color: AppColors.textMuted,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -81,8 +80,8 @@ class UserBubble extends StatelessWidget {
         ),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: const BoxDecoration(
-            color: Color(0xFFE9DEC9),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -95,19 +94,19 @@ class UserBubble extends StatelessWidget {
             children: [
               Text(
                 time.isEmpty ? 'You' : 'You · $time',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.5,
                   height: 1.4,
-                  color: AppColors.textDark,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -135,28 +134,28 @@ class AiNoticeBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: AppColors.primaryGreen.withValues(alpha: 0.14),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
             child: Icon(
               Icons.info_outline,
               size: 16,
-              color: AppColors.primaryGreen,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 height: 1.4,
-                color: AppColors.textMuted,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),

@@ -14,7 +14,9 @@ enum _FavoritesView { all, grid, list }
 /// Reads from the root-level [FavoritesCubit], which reloads by itself
 /// whenever the account changes.
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({super.key});
+  final bool embedded;
+
+  const FavoritesScreen({super.key, this.embedded = false});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -27,23 +29,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: BlocBuilder<FavoritesCubit, FavoritesState>(
-          builder: (context, state) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context, c),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: _filters(state, c),
-              ),
-              Expanded(child: _body(context, state, c)),
-            ],
-          ),
+    final content = SafeArea(
+      child: BlocBuilder<FavoritesCubit, FavoritesState>(
+        builder: (context, state) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(context, c),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: _filters(state, c),
+            ),
+            Expanded(child: _body(context, state, c)),
+          ],
         ),
       ),
     );
+    return widget.embedded ? content : Scaffold(body: content);
   }
 
   // ---------------------------------------------------------------------------
@@ -54,11 +55,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     padding: const EdgeInsets.fromLTRB(8, 12, 20, 0),
     child: Row(
       children: [
-        IconButton(
-          onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        const SizedBox(width: 4),
+        if (!widget.embedded) ...[
+          IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          const SizedBox(width: 4),
+        ] else
+          const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

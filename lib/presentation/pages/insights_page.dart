@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -6,12 +7,28 @@ import 'package:intl/intl.dart';
 
 import '../../data/dataresource/local_database_service.dart';
 import '../../core/utils/app_colors.dart';
+import '../widgets/bottom_nav.dart';
 
 
 enum InsightPeriod { today, week, month, custom }
 
 class InsightsPage extends StatefulWidget {
-  const InsightsPage({super.key});
+  final ValueChanged<int>? onBottomNavTap;
+
+  /// True when the page is a tab inside the home shell. The shell already
+  /// has the bottom navigation bar, so the page must not add a second one.
+  final bool embedded;
+
+  /// Called by the back arrow. As a tab there is nothing to pop, so the
+  /// home shell passes an action that returns to the Home tab.
+  final VoidCallback? onBack;
+
+  const InsightsPage({
+    super.key,
+    this.onBottomNavTap,
+    this.embedded = false,
+    this.onBack,
+  });
 
   @override
   State<InsightsPage> createState() => _InsightsPageState();
@@ -120,14 +137,6 @@ class _InsightsPageState extends State<InsightsPage> {
         lastDate: DateTime.now(),
         initialDateRange: _customRange ??
             DateTimeRange(start: _anchorDate, end: _anchorDate),
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.primaryGreen,
-                ),
-          ),
-          child: child!,
-        ),
       );
       if (selected != null) {
         setState(() {
@@ -224,9 +233,20 @@ class _InsightsPageState extends State<InsightsPage> {
         (_period == InsightPeriod.custom && _startDate == _endDate);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F0E1),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F0E1),
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.maybePop(context);
+            }
+          },
+        ),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -241,7 +261,7 @@ class _InsightsPageState extends State<InsightsPage> {
           IconButton(
             tooltip: 'Refresh insights',
             onPressed: _loadLogs,
-            icon: const Icon(Icons.more_horiz),
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
@@ -284,6 +304,12 @@ class _InsightsPageState extends State<InsightsPage> {
                     _disclaimer(),
                   ],
                 ),
+      bottomNavigationBar: widget.embedded
+          ? null
+          : BottomNavBar(
+              currentIndex: 0,
+              onTap: widget.onBottomNavTap ?? (_) { Navigator.maybePop(context); },
+            ),
     );
   }
 
@@ -297,7 +323,7 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget _syncNotice() => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8EFE1),
+          color: AppColors.primaryGreen.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Row(
@@ -326,10 +352,12 @@ class _InsightsPageState extends State<InsightsPage> {
           label: Text(labels[period]!),
           selected: selected,
           onSelected: (_) => _changePeriod(period),
-          selectedColor: const Color(0xFFEAD9B8),
-          backgroundColor: Colors.white,
-          shape: const StadiumBorder(
-            side: BorderSide(color: Color(0xFFE7E2D8)),
+          selectedColor: AppColors.accentHeart.withValues(alpha: 0.25),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.38),
+            ),
           ),
         );
       }).toList(),
@@ -342,7 +370,7 @@ class _InsightsPageState extends State<InsightsPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
@@ -372,12 +400,16 @@ class _InsightsPageState extends State<InsightsPage> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    SizedBox.expand(
-                      child: CircularProgressIndicator(
-                        value: (calories / 2000).clamp(0, 1),
-                        strokeWidth: 18,
-                        backgroundColor: const Color(0xFFECE8DD),
-                        valueColor: const AlwaysStoppedAnimation(Color(0xFF8B9C83)),
+                    CustomPaint(
+                      size: const Size(132, 132),
+                      painter: _MacroDonutPainter(
+                        proteinCalories: protein * 4,
+                        carbsCalories: carbs * 4,
+                        fatCalories: fat * 9,
+                        proteinColor: _macroColor('Protein'),
+                        carbsColor: _macroColor('Carbs'),
+                        fatColor: _macroColor('Fat'),
+                        trackColor: Theme.of(context).colorScheme.outline.withValues(alpha: 0.18),
                       ),
                     ),
                     Column(
@@ -426,7 +458,8 @@ class _InsightsPageState extends State<InsightsPage> {
                 : _DailyBarChart(days: days),
           ),
           const SizedBox(height: 8),
-          Text('${days.length} day(s) in range', style: const TextStyle(color: Colors.black54)),
+          Text('${days.length} day(s) in range',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -448,8 +481,10 @@ class _InsightsPageState extends State<InsightsPage> {
               ],
             ),
             const SizedBox(height: 12),
-            const Text('Macro targets are not set. Values are estimates when recipe nutrition is available.',
-                style: TextStyle(fontSize: 12, color: Colors.black54)),
+            Text('Macro targets are not set. Values are estimates when recipe nutrition is available.',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -458,7 +493,7 @@ class _InsightsPageState extends State<InsightsPage> {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            const Icon(Icons.circle, size: 9, color: Color(0xFF8B9C83)),
+            Icon(Icons.circle, size: 9, color: _macroColor(label)),
             const SizedBox(width: 7),
             Expanded(child: Text(label)),
             Text('${value.round()}$unit', style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -466,13 +501,28 @@ class _InsightsPageState extends State<InsightsPage> {
         ),
       );
 
+  Color _macroColor(String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (label) {
+      case 'Protein':
+        return isDark ? AppColors.darkMacroProtein : AppColors.macroProtein;
+      case 'Carbs':
+        return isDark ? AppColors.darkMacroCarbs : AppColors.macroCarbs;
+      case 'Fat':
+        return isDark ? AppColors.darkMacroFat : AppColors.macroFat;
+      case 'Calories':
+      default:
+        return Theme.of(context).colorScheme.onSurface;
+    }
+  }
+
   Widget _metric(String label, String value) => Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+            Text(label, style: TextStyle(fontSize: 11, color: _macroColor(label))),
             const SizedBox(height: 5),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _macroColor(label))),
           ],
         ),
       );
@@ -480,7 +530,7 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget _disclaimer() => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8EFE1),
+          color: AppColors.primaryGreen.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(
@@ -495,16 +545,17 @@ class _InsightsPageState extends State<InsightsPage> {
       );
 
   Widget _emptyState() => _card(
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 22),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 22),
           child: Column(
             children: [
-              Icon(Icons.restaurant_outlined, size: 42, color: Color(0xFF8B9C83)),
+              Icon(Icons.restaurant_outlined, size: 42, color: AppColors.primaryGreen),
               SizedBox(height: 12),
               Text('No meals logged for this period', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
               SizedBox(height: 6),
               Text('Use “Log as eaten” on a recipe to see its nutrition here.',
-                  textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
         ),
@@ -527,7 +578,7 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget _card(Widget child) => Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
         ),
         child: child,
@@ -541,6 +592,70 @@ class _DayTotal {
   double protein = 0;
   double carbs = 0;
   double fat = 0;
+}
+
+class _MacroDonutPainter extends CustomPainter {
+  const _MacroDonutPainter({
+    required this.proteinCalories,
+    required this.carbsCalories,
+    required this.fatCalories,
+    required this.proteinColor,
+    required this.carbsColor,
+    required this.fatColor,
+    required this.trackColor,
+  });
+
+  final double proteinCalories;
+  final double carbsCalories;
+  final double fatCalories;
+  final Color proteinColor;
+  final Color carbsColor;
+  final Color fatColor;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 16.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    final total = proteinCalories + carbsCalories + fatCalories;
+    if (total <= 0) return;
+
+    final segments = <(double, Color)>[
+      (proteinCalories, proteinColor),
+      (carbsCalories, carbsColor),
+      (fatCalories, fatColor),
+    ];
+    var startAngle = -math.pi / 2;
+    for (final segment in segments) {
+      if (segment.$1 <= 0) continue;
+      final sweepAngle = (segment.$1 / total) * math.pi * 2;
+      final paint = Paint()
+        ..color = segment.$2
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MacroDonutPainter oldDelegate) =>
+      oldDelegate.proteinCalories != proteinCalories ||
+      oldDelegate.carbsCalories != carbsCalories ||
+      oldDelegate.fatCalories != fatCalories ||
+      oldDelegate.proteinColor != proteinColor ||
+      oldDelegate.carbsColor != carbsColor ||
+      oldDelegate.fatColor != fatColor ||
+      oldDelegate.trackColor != trackColor;
 }
 
 class _DailyBarChart extends StatelessWidget {
@@ -563,7 +678,9 @@ class _DailyBarChart extends StatelessWidget {
                 Container(
                   height: height.clamp(4, 92),
                   decoration: BoxDecoration(
-                    color: day.calories == 0 ? const Color(0xFFECE8DD) : const Color(0xFF9AA88F),
+                    color: day.calories == 0
+                        ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)
+                        : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(7),
                   ),
                 ),
@@ -585,14 +702,15 @@ class _MonthlyLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-        painter: _LineChartPainter(days),
+        painter: _LineChartPainter(days, Theme.of(context).colorScheme.primary),
         child: const SizedBox.expand(),
       );
 }
 
 class _LineChartPainter extends CustomPainter {
-  _LineChartPainter(this.days);
+  _LineChartPainter(this.days, this.color);
   final List<_DayTotal> days;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -609,7 +727,7 @@ class _LineChartPainter extends CustomPainter {
       }
     }
     final paint = Paint()
-      ..color = const Color(0xFF8B9C83)
+      ..color = color
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -617,5 +735,5 @@ class _LineChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => oldDelegate.days != days;
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => oldDelegate.days != days || oldDelegate.color != color;
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/app_colors.dart';
 
 class DietaryPreferencesWidget extends StatelessWidget {
   final Set<String> selectedPreferences;
@@ -48,16 +47,16 @@ class DietaryPreferencesWidget extends StatelessWidget {
           selected: isSelected,
           onSelected: (_) => _togglePreference(preference),
           showCheckmark: false,
-          backgroundColor: AppColors.surface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           selectedColor:
-              AppColors.primaryGreen.withValues(alpha: 0.18),
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.18),
           side: BorderSide(
             color: isSelected
-                ? AppColors.primaryGreen
-                : AppColors.divider,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
           ),
           labelStyle: TextStyle(
-            color: AppColors.textDark,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 12,
             fontWeight: isSelected
                 ? FontWeight.w600

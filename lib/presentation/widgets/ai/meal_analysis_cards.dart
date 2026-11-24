@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/app_colors.dart';
 import '../../../data/models/nutrition_summary.dart';
 
-const Color _tileColor = Color(0xFFEFE2CD);
-const Color _carbsColor = Color(0xFFB9D3C2);
-
-BoxDecoration _cardDecoration() {
+BoxDecoration _cardDecoration(BuildContext context) {
   return BoxDecoration(
-    color: AppColors.surface,
+    color: Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(22),
   );
 }
@@ -30,30 +26,30 @@ class NutritionCard extends StatelessWidget {
       nutrition.carbohydrates != null ||
       nutrition.fat != null;
 
-  Widget _stat(String value, String label) {
+  Widget _stat(BuildContext context, String value, String label) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: _tileColor.withValues(alpha: 0.55),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           children: [
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 3),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textMuted,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -62,7 +58,7 @@ class NutritionCard extends StatelessWidget {
     );
   }
 
-  Widget _legendItem(Color color, String label) {
+  Widget _legendItem(BuildContext context, Color color, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -74,13 +70,13 @@ class NutritionCard extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ],
     );
   }
 
-  Widget _macroSplit() {
+  Widget _macroSplit(BuildContext context) {
     final protein = (nutrition.protein ?? 0) * 4;
     final carbs = (nutrition.carbohydrates ?? 0) * 4;
     final fat = (nutrition.fat ?? 0) * 9;
@@ -89,9 +85,9 @@ class NutritionCard extends StatelessWidget {
     if (total <= 0) return const SizedBox.shrink();
 
     final segments = <(double, Color, String)>[
-      (protein, AppColors.primaryGreen, 'Protein'),
-      (carbs, _carbsColor, 'Carbs'),
-      (fat, AppColors.accentHeart, 'Fat'),
+      (protein, Theme.of(context).colorScheme.primary, 'Protein'),
+      (carbs, Theme.of(context).colorScheme.tertiary, 'Carbs'),
+      (fat, Theme.of(context).colorScheme.secondary, 'Fat'),
     ].where((segment) => segment.$1 > 0).toList();
 
     return Padding(
@@ -120,7 +116,7 @@ class NutritionCard extends StatelessWidget {
             runSpacing: 6,
             children: segments.map((segment) {
               final percent = (segment.$1 / total * 100).round();
-              return _legendItem(segment.$2, '${segment.$3} $percent%');
+              return _legendItem(context, segment.$2, '${segment.$3} $percent%');
             }).toList(),
           ),
         ],
@@ -141,29 +137,29 @@ class NutritionCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
+      decoration: _cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Estimated nutrition',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
               if (nutrition.isEstimated)
-                const Text(
+                Text(
                   'Estimated',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primaryGreen,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
             ],
@@ -172,20 +168,20 @@ class NutritionCard extends StatelessWidget {
           if (_hasNutrition) ...[
             Row(
               children: [
-                _stat(_number(nutrition.calories), 'kcal'),
+                _stat(context, _number(nutrition.calories), 'kcal'),
                 const SizedBox(width: 8),
-                _stat(_number(nutrition.protein, unit: 'g'), 'Protein'),
+                _stat(context, _number(nutrition.protein, unit: 'g'), 'Protein'),
                 const SizedBox(width: 8),
-                _stat(_number(nutrition.carbohydrates, unit: 'g'), 'Carbs'),
+                _stat(context, _number(nutrition.carbohydrates, unit: 'g'), 'Carbs'),
                 const SizedBox(width: 8),
-                _stat(_number(nutrition.fat, unit: 'g'), 'Fat'),
+                _stat(context, _number(nutrition.fat, unit: 'g'), 'Fat'),
               ],
             ),
-            _macroSplit(),
+            _macroSplit(context),
           ] else
-            const Text(
+            Text(
               'Nutrition values are not available for this meal.',
-              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           if (notes.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -194,10 +190,10 @@ class NutritionCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   note,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     height: 1.4,
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -228,10 +224,11 @@ class HealthScoreCard extends StatelessWidget {
     return 'Let’s rebalance';
   }
 
-  static Color _color(int score) {
-    if (score >= 70) return AppColors.primaryGreen;
-    if (score >= 40) return AppColors.warning;
-    return AppColors.error;
+  static Color _color(BuildContext context, int score) {
+    final colors = Theme.of(context).colorScheme;
+    if (score >= 70) return colors.primary;
+    if (score >= 40) return colors.tertiary;
+    return colors.error;
   }
 
   @override
@@ -245,7 +242,7 @@ class HealthScoreCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
+      decoration: _cardDecoration(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -259,8 +256,8 @@ class HealthScoreCard extends StatelessWidget {
                   CircularProgressIndicator(
                     value: score / 100,
                     strokeWidth: 7,
-                    backgroundColor: _tileColor,
-                    color: _color(score),
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: _color(context, score),
                   ),
                   Center(
                     child: Column(
@@ -268,17 +265,17 @@ class HealthScoreCard extends StatelessWidget {
                       children: [
                         Text(
                           '$score',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textDark,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
-                        const Text(
+                        Text(
                           '/100',
                           style: TextStyle(
                             fontSize: 10,
-                            color: AppColors.textMuted,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -295,20 +292,20 @@ class HealthScoreCard extends StatelessWidget {
               children: [
                 Text(
                   hasScore ? _headline(score) : 'Assessment',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 if (hasScore) ...[
                   const SizedBox(height: 3),
-                  const Text(
+                  Text(
                     'Health score',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primaryGreen,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -316,10 +313,10 @@ class HealthScoreCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     assessment.trim(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       height: 1.5,
-                      color: AppColors.textMuted,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -345,16 +342,16 @@ class TipsCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
+      decoration: _cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Make your meal work harder',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -364,22 +361,22 @@ class TipsCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 1),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
                     child: Icon(
                       Icons.check_circle_outline,
                       size: 17,
-                      color: AppColors.primaryGreen,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       tip,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         height: 1.45,
-                        color: AppColors.textMuted,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),

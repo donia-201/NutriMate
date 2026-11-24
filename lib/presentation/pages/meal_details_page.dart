@@ -15,6 +15,8 @@ import '../../data/repositories/nutrition_repository.dart';
 import '../cubit/ai_chat_cubit.dart';
 import 'ai_assistant_page.dart';
 import 'add_to_planner_sheet.dart';
+import 'cooking_details_page.dart';
+import '../widgets/bottom_nav.dart';
 
 class MealDetailsPage extends StatefulWidget {
   final MealModel meal;
@@ -136,6 +138,15 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String get _aiMealDescription {
+    final ingredientText = _meal.ingredients
+        .map((ingredient) => '${ingredient.measure} ${ingredient.name}'.trim())
+        .join(', ');
+    return ingredientText.isEmpty
+        ? _meal.strMeal
+        : '${_meal.strMeal}. Ingredients: $ingredientText';
+  }
+
   void _openHealthierAlternatives() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -156,8 +167,8 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             );
           },
           child: AiAssistantPage(
-            initialMealDescription: _meal.strMeal,
-            initialMode: AiAssistantMode.healthyAlternatives,
+            initialMealDescription: _aiMealDescription,
+            initialMode: AiAssistantMode.mealAnalysis,
           ),
         ),
       ),
@@ -176,13 +187,19 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('Recipe')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: const Text('Recipe'),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildError(colors)
               : _buildDetails(colors),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 0,
+        onTap: (_) { Navigator.maybePop(context); },
+      ),
     );
   }
 
@@ -331,46 +348,50 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 52,
-            child: FilledButton.tonalIcon(
-              onPressed: _openHealthierAlternatives,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Make it healthier with AI'),
+  height: 52,
+  child: FilledButton.icon(
+    onPressed: _openHealthierAlternatives,
+    style: FilledButton.styleFrom(
+      backgroundColor: colors.primary,
+      foregroundColor: colors.onPrimary,
+      disabledBackgroundColor: colors.primary.withValues(alpha: 0.5),
+      disabledForegroundColor: colors.onPrimary.withValues(alpha: 0.7),
+      minimumSize: const Size.fromHeight(52),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
+    icon: const Icon(Icons.auto_awesome),
+    label: const Text('Make it healthier with AI'),
+  ),
+),
+          const SizedBox(height: 20),
+          InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CookingDetailsPage(meal: _meal),
+              ),
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Ingredients, steps & cooking video',
+                      style: AppTheme.small.copyWith(
+                        color: colors.onSurfaceVariant,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.keyboard_arrow_down, color: colors.onSurfaceVariant),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          if (_meal.ingredients.isNotEmpty) ...[
-            Text('Ingredients', style: AppTheme.titleBold.copyWith(fontSize: 19)),
-            const SizedBox(height: 10),
-            ..._meal.ingredients.map(
-              (ingredient) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 7, color: colors.primary),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(ingredient.name)),
-                    Text(
-                      ingredient.measure,
-                      style: TextStyle(color: colors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 22),
-          ],
-          if ((_meal.strInstructions ?? '').trim().isNotEmpty) ...[
-            Text('Cooking steps', style: AppTheme.titleBold.copyWith(fontSize: 19)),
-            const SizedBox(height: 10),
-            Text(
-              _meal.strInstructions!,
-              style: TextStyle(
-                height: 1.55,
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          ],
         ],
       );
 
@@ -393,7 +414,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Estimated • whole recipe',
+            'Estimated • ${_nutrition?.scope == 'per_serving' ? 'per serving' : 'whole recipe'}',
             style: AppTheme.titleBold.copyWith(
               fontSize: 17,
               color: colors.onSurface,

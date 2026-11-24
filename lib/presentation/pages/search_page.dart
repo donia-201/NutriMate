@@ -6,17 +6,19 @@ import '../../data/models/meal_model.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/search_state.dart';
+import '../widgets/bottom_nav.dart';
 import 'meal_details_page.dart';
 
 class SearchPage extends StatelessWidget {
   final SearchCubit? cubit;
   final bool embedded;
+  final ValueChanged<int>? onBottomNavTap;
 
-  const SearchPage({super.key, this.cubit, this.embedded = false});
+  const SearchPage({super.key, this.cubit, this.embedded = false, this.onBottomNavTap});
 
   @override
   Widget build(BuildContext context) {
-    final view = _SearchView(embedded: embedded);
+    final view = _SearchView(embedded: embedded, onBottomNavTap: onBottomNavTap);
     return cubit == null
         ? BlocProvider(create: (_) => SearchCubit(), child: view)
         : BlocProvider.value(value: cubit!, child: view);
@@ -25,7 +27,8 @@ class SearchPage extends StatelessWidget {
 
 class _SearchView extends StatefulWidget {
   final bool embedded;
-  const _SearchView({required this.embedded});
+  final ValueChanged<int>? onBottomNavTap;
+  const _SearchView({required this.embedded, this.onBottomNavTap});
 
   @override
   State<_SearchView> createState() => _SearchViewState();
@@ -151,7 +154,15 @@ class _SearchViewState extends State<_SearchView> {
             ],
           ),
         );
-        return widget.embedded ? content : Scaffold(body: content);
+        return widget.embedded
+            ? content
+            : Scaffold(
+                body: content,
+                bottomNavigationBar: BottomNavBar(
+                  currentIndex: 0,
+                  onTap: widget.onBottomNavTap ?? (_) { Navigator.maybePop(context); },
+                ),
+              );
       },
     ),
   );
