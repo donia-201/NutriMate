@@ -19,16 +19,15 @@ class HomeCubit extends Cubit<HomeState> {
     NutritionRepository? nutritionRepository,
     Connectivity? connectivity,
     FavoritesCubit? favoritesCubit,
-  })  : _api = apiService ?? MealApiService(),
-        _database = databaseService ?? LocalDatabaseService.instance,
-        _nutritionRepository = nutritionRepository ?? NutritionRepository(),
-        _connectivity = connectivity ?? Connectivity(),
-        _favorites = favoritesCubit ?? FavoritesCubit(),
-        _ownsFavorites = favoritesCubit == null,
-        _ownsApi = apiService == null,
-        _ownsNutritionRepository = nutritionRepository == null,
-        super(const HomeState()) {
- 
+  }) : _api = apiService ?? MealApiService(),
+       _database = databaseService ?? LocalDatabaseService.instance,
+       _nutritionRepository = nutritionRepository ?? NutritionRepository(),
+       _connectivity = connectivity ?? Connectivity(),
+       _favorites = favoritesCubit ?? FavoritesCubit(),
+       _ownsFavorites = favoritesCubit == null,
+       _ownsApi = apiService == null,
+       _ownsNutritionRepository = nutritionRepository == null,
+       super(const HomeState()) {
     _favoritesSub = _favorites.stream.listen((FavoritesState s) {
       if (isClosed) return;
       emit(state.copyWith(favorites: s.meals));
@@ -57,6 +56,7 @@ class HomeCubit extends Cubit<HomeState> {
       if (!isClosed) emit(state.copyWith(favorites: favorites));
     } catch (_) {}
   }
+
   bool _refreshing = false;
 
   Future<void> initialize() async {
@@ -73,7 +73,7 @@ class HomeCubit extends Cubit<HomeState> {
           favorites: favorites,
           isOnline: online,
           mealOfDay:
-          state.mealOfDay ?? (cached.isNotEmpty ? cached.first : null),
+              state.mealOfDay ?? (cached.isNotEmpty ? cached.first : null),
           popularMeals: state.popularMeals.isNotEmpty
               ? state.popularMeals
               : cached.take(6).toList(),
@@ -99,7 +99,7 @@ class HomeCubit extends Cubit<HomeState> {
             isLoading: false,
             errorMessage: cached.isEmpty
                 ? 'You are offline. Connect to the internet to load recipes.'
-                : 'Offline mode — showing saved recipes.',
+                : 'Offline mode - showing saved recipes.',
           ),
         );
       }
@@ -162,7 +162,7 @@ class HomeCubit extends Cubit<HomeState> {
           isLoading: false,
           isOnline: false,
           mealOfDay:
-          state.mealOfDay ?? (cached.isNotEmpty ? cached.first : null),
+              state.mealOfDay ?? (cached.isNotEmpty ? cached.first : null),
           popularMeals: state.popularMeals.isNotEmpty
               ? state.popularMeals
               : cached.take(6).toList(),
@@ -179,19 +179,24 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> loadMealNutrition(MealModel meal) async {
     if (!state.isOnline) {
-      emit(state.copyWith(
-        clearNutrition: true,
-        isNutritionLoading: false,
-        nutritionError: 'Nutrition calculation requires an internet connection.',
-      ));
+      emit(
+        state.copyWith(
+          clearNutrition: true,
+          isNutritionLoading: false,
+          nutritionError:
+              'Nutrition calculation requires an internet connection.',
+        ),
+      );
       return;
     }
 
-    emit(state.copyWith(
-      isNutritionLoading: true,
-      clearNutrition: true,
-      clearNutritionError: true,
-    ));
+    emit(
+      state.copyWith(
+        isNutritionLoading: true,
+        clearNutrition: true,
+        clearNutritionError: true,
+      ),
+    );
 
     try {
       var detailedMeal = meal;
@@ -213,8 +218,7 @@ class HomeCubit extends Cubit<HomeState> {
         }
       }
 
-      final nutrition =
-      await _nutritionRepository.calculateMealNutrition(
+      final nutrition = await _nutritionRepository.calculateMealNutrition(
         detailedMeal.ingredients,
       );
 
@@ -222,19 +226,23 @@ class HomeCubit extends Cubit<HomeState> {
       if (isClosed) return;
       if (state.mealOfDay?.idMeal != meal.idMeal) return;
 
-      emit(state.copyWith(
-        mealNutrition: nutrition,
-        isNutritionLoading: false,
-        clearNutritionError: true,
-      ));
+      emit(
+        state.copyWith(
+          mealNutrition: nutrition,
+          isNutritionLoading: false,
+          clearNutritionError: true,
+        ),
+      );
     } catch (error) {
       if (isClosed) return;
       if (state.mealOfDay?.idMeal != meal.idMeal) return;
 
-      emit(state.copyWith(
-        isNutritionLoading: false,
-        nutritionError: error.toString(),
-      ));
+      emit(
+        state.copyWith(
+          isNutritionLoading: false,
+          nutritionError: error.toString(),
+        ),
+      );
     }
   }
 
@@ -254,7 +262,7 @@ class HomeCubit extends Cubit<HomeState> {
             emit(
               state.copyWith(
                 favoriteDetailErrorMessage:
-                'Could not load recipe details. Try again before favoriting.',
+                    'Could not load recipe details. Try again before favoriting.',
               ),
             );
             return;
@@ -264,7 +272,7 @@ class HomeCubit extends Cubit<HomeState> {
           emit(
             state.copyWith(
               favoriteDetailErrorMessage:
-              'Could not load recipe details. Please check your connection.',
+                  'Could not load recipe details. Please check your connection.',
             ),
           );
           return;
@@ -277,7 +285,8 @@ class HomeCubit extends Cubit<HomeState> {
       if (!ok) {
         emit(
           state.copyWith(
-            errorMessage: _favorites.state.errorMessage ??
+            errorMessage:
+                _favorites.state.errorMessage ??
                 'Could not update favorites. Please try again.',
           ),
         );

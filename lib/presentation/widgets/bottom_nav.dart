@@ -1,13 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../core/network/ai_api_config.dart';
-import '../../core/network/dio_client.dart';
-import '../../data/dataresource/ai_remote_darasource.dart';
-import '../../data/dataresource/meal_api_services.dart';
-import '../../data/repositories/ai_repository.dart';
-import '../cubit/ai_chat_cubit.dart';
-import '../pages/ai_assistant_page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -20,47 +11,7 @@ class BottomNavBar extends StatelessWidget {
   });
 
   void _handleNavigation(BuildContext context, int index) {
-    switch (index) {
-      case 2:
-        // Already on the NutriAI screen.
-        if (currentIndex == 2) return;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider(
-              create: (_) {
-                // AI requests use a dedicated backend client.
-                // MealApiService keeps its own TheMealDB client.
-                final aiDioClient = DioClient(
-                  baseUrl: AiApiConfig.baseUrl.isEmpty
-                      ? 'https://invalid.invalid/'
-                      : AiApiConfig.baseUrl,
-                );
-                final mealApiService = MealApiService();
-
-                final dataSource = AiRemoteDataSource(
-                  aiDioClient: aiDioClient,
-                  mealApiService: mealApiService,
-                );
-
-                final repository = AiRepository(
-                  dataSource: dataSource,
-                );
-
-                return AiChatCubit(
-                  repository: repository,
-                );
-              },
-              child: AiAssistantPage(onBottomNavTap: onTap),
-            ),
-          ),
-        );
-        break;
-
-      default:
-        onTap(index);
-    }
+    onTap(index);
   }
 
   @override
@@ -113,7 +64,6 @@ class BottomNavBar extends StatelessWidget {
               Icons.insights,
               "Insights",
             ),
-
           ],
         ),
       ),
@@ -121,13 +71,13 @@ class BottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem(
-      BuildContext context,
-      int index,
-      IconData icon,
-      IconData activeIcon,
-      String label, {
-        bool isCenter = false,
-      }) {
+    BuildContext context,
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label, {
+    bool isCenter = false,
+  }) {
     final isSelected = currentIndex == index;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -141,9 +91,9 @@ class BottomNavBar extends StatelessWidget {
         ),
         decoration: isCenter && isSelected
             ? BoxDecoration(
-          color: colorScheme.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-        )
+                color: colorScheme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              )
             : null,
         child: Column(
           mainAxisSize: MainAxisSize.min,

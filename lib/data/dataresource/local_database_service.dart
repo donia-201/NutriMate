@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/meal_model.dart';
 import '../models/planned_meal.dart';
 import '../models/nutrition_model.dart';
+import '../models/app_notification.dart';
 
 enum LocalDatabaseErrorType { open, read, write, delete }
 
@@ -11,10 +12,7 @@ class LocalDatabaseException implements Exception {
   final LocalDatabaseErrorType type;
   final String message;
 
-  const LocalDatabaseException({
-    required this.type,
-    required this.message,
-  });
+  const LocalDatabaseException({required this.type, required this.message});
 
   @override
   String toString() => message;
@@ -54,7 +52,7 @@ class LocalDatabaseService {
 
     return openDatabase(
       p.join(path, 'nutrimate_home.db'),
-version: 5,
+      version: 6,
 
       onCreate: (db, version) async {
         await db.execute('''
@@ -73,9 +71,10 @@ version: 5,
         ''');
 
         await _createPlannedMealsTable(db);
-await _createFavoritesTable(db);
+        await _createFavoritesTable(db);
         await _createLoggedMealsTable(db);
         await _createMealLogsTable(db);
+        await _createAppNotificationsTable(db);
       },
 
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -86,9 +85,7 @@ await _createFavoritesTable(db);
         if (oldVersion < 3) {
           // الجدول القديم UNIQUE(day, slot) من غير uid،
           // فلازم نبنيه من جديد.
-          await db.execute(
-            'DROP TABLE IF EXISTS planned_meals',
-          );
+          await db.execute('DROP TABLE IF EXISTS planned_meals');
 
           await _createPlannedMealsTable(db);
         }
@@ -98,6 +95,9 @@ await _createFavoritesTable(db);
           await _createFavoritesTable(db);
           await _createLoggedMealsTable(db);
           await _createMealLogsTable(db);
+        }
+        if (oldVersion < 6) {
+          await _createAppNotificationsTable(db);
         }
       },
     );
@@ -201,11 +201,7 @@ await _createFavoritesTable(db);
   /// Adds/removes [meal] from the favorites of [uid] only.
   /// Meal details live in the shared `meals` cache table; ownership lives
   /// in the `favorites` table.
-  Future<void> setFavorite(
-    String uid,
-    MealModel meal,
-    bool favorite,
-  ) async {
+  Future<void> setFavorite(String uid, MealModel meal, bool favorite) async {
     try {
       final db = await database;
 
@@ -231,24 +227,16 @@ await _createFavoritesTable(db);
             ? meal
             : MealModel.fromDbMap(rows.first).mergeDetails(meal);
 
-        await txn.insert(
-          'meals',
-          {
-            ...preserved.toDbMap(),
-            'cachedAt': now,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('meals', {
+          ...preserved.toDbMap(),
+          'cachedAt': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-        await txn.insert(
-          'favorites',
-          {
-            'uid': uid,
-            'idMeal': meal.idMeal,
-            'addedAt': now,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('favorites', {
+          'uid': uid,
+          'idMeal': meal.idMeal,
+          'addedAt': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       });
     } on LocalDatabaseException {
       rethrow;
@@ -310,33 +298,25 @@ await _createFavoritesTable(db);
       final db = await database;
       final loggedAt = (eatenAt ?? DateTime.now()).millisecondsSinceEpoch;
       await db.transaction((txn) async {
-        await txn.insert(
-          'logged_meals',
-          {
-            'uid': uid,
-            ...meal.toDbMap(),
-            'loggedAt': loggedAt,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        await txn.insert(
-          'meal_logs',
-          {
-            'uid': uid,
-            'idMeal': meal.idMeal,
-            'strMeal': meal.strMeal,
-            'strCategory': meal.strCategory,
-            'strArea': meal.strArea,
-            'strMealThumb': meal.strMealThumb,
-            'loggedAt': loggedAt,
-            'calories': nutrition?.calories,
-            'protein': nutrition?.protein,
-            'carbohydrates': nutrition?.carbohydrates,
-            'fat': nutrition?.fat,
-            'isEstimated': nutrition?.isEstimated == true ? 1 : 0,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('logged_meals', {
+          'uid': uid,
+          ...meal.toDbMap(),
+          'loggedAt': loggedAt,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert('meal_logs', {
+          'uid': uid,
+          'idMeal': meal.idMeal,
+          'strMeal': meal.strMeal,
+          'strCategory': meal.strCategory,
+          'strArea': meal.strArea,
+          'strMealThumb': meal.strMealThumb,
+          'loggedAt': loggedAt,
+          'calories': nutrition?.calories,
+          'protein': nutrition?.protein,
+          'carbohydrates': nutrition?.carbohydrates,
+          'fat': nutrition?.fat,
+          'isEstimated': nutrition?.isEstimated == true ? 1 : 0,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       });
     } catch (_) {
       throw const LocalDatabaseException(
@@ -353,10 +333,20 @@ await _createFavoritesTable(db);
   }) async {
     if (uid.isEmpty || uid == 'guest') return [];
     try {
-      final startMs = DateTime(start.year, start.month, start.day)
-          .millisecondsSinceEpoch;
-      final endMs = DateTime(end.year, end.month, end.day, 23, 59, 59, 999)
-          .millisecondsSinceEpoch;
+      final startMs = DateTime(
+        start.year,
+        start.month,
+        start.day,
+      ).millisecondsSinceEpoch;
+      final endMs = DateTime(
+        end.year,
+        end.month,
+        end.day,
+        23,
+        59,
+        59,
+        999,
+      ).millisecondsSinceEpoch;
       return await (await database).query(
         'meal_logs',
         where: 'uid = ? AND loggedAt >= ? AND loggedAt <= ?',
@@ -413,9 +403,7 @@ await _createFavoritesTable(db);
     ''');
   }
 
-  Future<List<MealModel>> getCachedMeals({
-    int limit = 12,
-  }) async {
+  Future<List<MealModel>> getCachedMeals({int limit = 12}) async {
     try {
       final rows = await (await database).query(
         'meals',
@@ -439,56 +427,54 @@ await _createFavoritesTable(db);
   // ============================================================
 
   Future<PlannedMeal?> getPlannedMeal(
-      String uid,
-      DateTime day,
-      String slot,
-      ) async {
+    String uid,
+    DateTime day,
+    String slot,
+  ) async {
     final rows = await (await database).query(
       'planned_meals',
       where: 'uid = ? AND day = ? AND slot = ?',
-      whereArgs: [
-        uid,
-        _dayKey(day),
-        slot,
-      ],
+      whereArgs: [uid, _dayKey(day), slot],
       limit: 1,
     );
 
-    return rows.isEmpty
-        ? null
-        : PlannedMeal.fromDbMap(rows.first);
+    return rows.isEmpty ? null : PlannedMeal.fromDbMap(rows.first);
   }
 
-  Future<void> savePlannedMeal(
-      String uid,
-      PlannedMeal meal,
-      ) async {
+  Future<void> savePlannedMeal(String uid, PlannedMeal meal) async {
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final mealDay = DateTime(meal.day.year, meal.day.month, meal.day.day);
+    if (mealDay.isBefore(todayOnly)) {
+      throw const LocalDatabaseException(
+        type: LocalDatabaseErrorType.write,
+        message: 'Past dates are view-only.',
+      );
+    }
     final db = await database;
 
-    await db.insert(
-      'planned_meals',
-      {
-        ...meal.toDbMap(),
-        'slotOrder': _slotOrder(meal.slot),
-        'uid': uid,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('planned_meals', {
+      ...meal.toDbMap(),
+      'slotOrder': _slotOrder(meal.slot),
+      'uid': uid,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> removePlannedMeal(
-      String uid,
-      PlannedMeal meal,
-      ) async {
+  Future<void> removePlannedMeal(String uid, PlannedMeal meal) async {
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final mealDay = DateTime(meal.day.year, meal.day.month, meal.day.day);
+    if (mealDay.isBefore(todayOnly)) {
+      throw const LocalDatabaseException(
+        type: LocalDatabaseErrorType.delete,
+        message: 'Past planned meals cannot be changed or removed.',
+      );
+    }
     try {
       await (await database).delete(
         'planned_meals',
         where: 'uid = ? AND day = ? AND slot = ?',
-        whereArgs: [
-          uid,
-          meal.dayKey,
-          meal.slot,
-        ],
+        whereArgs: [uid, meal.dayKey, meal.slot],
       );
     } on LocalDatabaseException {
       rethrow;
@@ -501,27 +487,21 @@ await _createFavoritesTable(db);
   }
 
   Future<List<PlannedMeal>> getPlannedMealsBetween(
-      String uid,
-      DateTime start,
-      DateTime end,
-      ) async {
+    String uid,
+    DateTime start,
+    DateTime end,
+  ) async {
     final rows = await (await database).query(
       'planned_meals',
       where: 'uid = ? AND day >= ? AND day <= ?',
-      whereArgs: [
-        uid,
-        _dayKey(start),
-        _dayKey(end),
-      ],
+      whereArgs: [uid, _dayKey(start), _dayKey(end)],
       orderBy: 'day ASC, slotOrder ASC',
     );
 
     return rows.map(PlannedMeal.fromDbMap).toList();
   }
 
-  Future<void> _createPlannedMealsTable(
-      Database db,
-      ) async {
+  Future<void> _createPlannedMealsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS planned_meals (
         localId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -553,18 +533,73 @@ await _createFavoritesTable(db);
   }
 
   String _dayKey(DateTime value) =>
-      DateTime(
-        value.year,
-        value.month,
-        value.day,
-      ).toIso8601String();
+      DateTime(value.year, value.month, value.day).toIso8601String();
 
   int _slotOrder(String slot) =>
-      const {
-        'Breakfast': 0,
-        'Lunch': 1,
-        'Dinner': 2,
-      }[slot] ?? 3;
+      const {'Breakfast': 0, 'Lunch': 1, 'Dinner': 2}[slot] ?? 3;
+
+  Future<void> _createAppNotificationsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        triggeredAt INTEGER NOT NULL,
+        isRead INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_notifications_uid '
+      'ON app_notifications(uid, triggeredAt DESC)',
+    );
+  }
+
+  Future<void> addAppNotification(AppNotification notification) async {
+    final db = await database;
+    final existing = await db.query(
+      'app_notifications',
+      columns: ['id'],
+      where: 'uid = ? AND title = ? AND body = ? AND triggeredAt = ?',
+      whereArgs: [
+        notification.uid,
+        notification.title,
+        notification.body,
+        notification.triggeredAt.millisecondsSinceEpoch,
+      ],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) return;
+    await db.insert('app_notifications', notification.toDbMap());
+  }
+
+  Future<List<AppNotification>> getAppNotifications(String uid) async {
+    final rows = await (await database).query(
+      'app_notifications',
+      where: 'uid = ?',
+      whereArgs: [uid],
+      orderBy: 'triggeredAt DESC',
+    );
+    return rows.map(AppNotification.fromDbMap).toList();
+  }
+
+  Future<void> markAppNotificationRead(String uid, int id) async {
+    await (await database).update(
+      'app_notifications',
+      {'isRead': 1},
+      where: 'uid = ? AND id = ?',
+      whereArgs: [uid, id],
+    );
+  }
+
+  Future<void> markAllAppNotificationsRead(String uid) async {
+    await (await database).update(
+      'app_notifications',
+      {'isRead': 1},
+      where: 'uid = ?',
+      whereArgs: [uid],
+    );
+  }
 
   Future<void> close() async {
     final db = _db;

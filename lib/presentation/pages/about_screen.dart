@@ -33,29 +33,41 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Center(
-            child: Text('NutriMate',
-                style: AppTheme.titleBold.copyWith(fontSize: 30, color: c.onSurface)),
+            child: Text(
+              'NutriMate',
+              style: AppTheme.titleBold.copyWith(
+                fontSize: 30,
+                color: c.onSurface,
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           Center(
-            child: Text('Eat smart. Plan better.',
-                style: AppTheme.subTitle.copyWith(color: c.onSurfaceVariant)),
+            child: Text(
+              'Eat smart. Plan better.',
+              style: AppTheme.subTitle.copyWith(color: c.onSurfaceVariant),
+            ),
           ),
           const SizedBox(height: 24),
           AppCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                'Discover recipes, plan meals and review meal history.',
-                style: AppTheme.body.copyWith(color: c.onSurface),
-              ),
-              const Divider(height: 28),
-              _InfoRow(Icons.code, 'Developer', ''),
-              const SizedBox(height: 12),
-              _InfoRow(Icons.info_outline, 'Version', '1.0.0'),
-              const SizedBox(height: 16),
-              Text('© 2026 NutriMate',
-                  style: AppTheme.small.copyWith(color: c.onSurfaceVariant)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Discover recipes, plan meals and review meal history.',
+                  style: AppTheme.body.copyWith(color: c.onSurface),
+                ),
+                const Divider(height: 28),
+                _InfoRow(Icons.code, 'Developer', ''),
+                const SizedBox(height: 12),
+                _InfoRow(Icons.info_outline, 'Version', '1.0.0'),
+                const SizedBox(height: 16),
+                Text(
+                  '(c) 2026 NutriMate',
+                  style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -72,11 +84,18 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    return Row(children: [
-      Icon(icon, size: 20, color: c.onSurface),
-      const SizedBox(width: 12),
-      Expanded(child: Text(label, style: AppTheme.label.copyWith(color: c.onSurface))),
-      Text(value, style: AppTheme.body.copyWith(color: c.onSurfaceVariant)),
-    ]);
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: c.onSurface),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTheme.label.copyWith(color: c.onSurface),
+          ),
+        ),
+        Text(value, style: AppTheme.body.copyWith(color: c.onSurfaceVariant)),
+      ],
+    );
   }
 }

@@ -8,6 +8,8 @@ import 'core/app_theme.dart';
 import 'firebase_options.dart';
 import 'presentation/pages/splash_page.dart';
 import 'presentation/cubit/profile_cubit.dart';
+import 'core/services/meal_notification_service.dart';
+import 'presentation/cubit/notifications_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +25,10 @@ Future<void> main() async {
   } on UnsupportedError catch (error) {
     firebaseInitializationError =
         error.message?.toString() ??
-            'Firebase is not configured for this platform.';
+        'Firebase is not configured for this platform.';
   } catch (_) {
     firebaseInitializationError =
-    'Could not initialize Firebase. Check your configuration and try again.';
+        'Could not initialize Firebase. Check your configuration and try again.';
   }
 
   final prefs = await SharedPreferencesWithCache.create(
@@ -34,6 +36,23 @@ Future<void> main() async {
       allowList: ProfileCubit.keys,
     ),
   );
+  const firstLaunchKey = 'notificationPermissionAsked';
+  final firstLaunchNotAsked = prefs.getBool(firstLaunchKey) == null;
+  await MealNotificationService.instance.initialize(
+    enabled: prefs.getBool(ProfileCubit.notificationsKey) ?? true,
+  );
+  if (firstLaunchNotAsked) {
+    final granted = await MealNotificationService.instance.requestPermission();
+    await prefs.setBool(firstLaunchKey, true);
+    await prefs.setBool(ProfileCubit.notificationsKey, granted);
+  }
+  final notificationsEnabled =
+      prefs.getBool(ProfileCubit.notificationsKey) ?? true;
+  final notificationPermissionGranted = await MealNotificationService.instance
+      .initialize(enabled: notificationsEnabled);
+  if (notificationsEnabled && !notificationPermissionGranted) {
+    await prefs.setBool(ProfileCubit.notificationsKey, false);
+  }
 
   runApp(
     MultiBlocProvider(
@@ -41,6 +60,7 @@ Future<void> main() async {
         BlocProvider(create: (_) => ProfileCubit(prefs)),
         // فوق الـ MaterialApp عشان الهوم والبروفايل وصفحة الـ AI يشوفوه.
         BlocProvider(create: (_) => FavoritesCubit()),
+        BlocProvider(create: (_) => NotificationsCubit()..load()),
       ],
       child: NutriMateApp(
         firebaseInitializationError: firebaseInitializationError,

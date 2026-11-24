@@ -7,7 +7,6 @@ import 'package:nutri_mate/presentation/pages/meal_details_page.dart';
 
 import '../cubit/favorites_cubit.dart';
 
-
 enum _FavoritesView { all, grid, list }
 
 /// Favorite meals of the signed-in user.
@@ -108,19 +107,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Row(
       children: [
         chip(
-          'All · ${state.meals.length}',
+          'All - ${state.meals.length}',
           _view == _FavoritesView.all,
-              () => setState(() => _view = _FavoritesView.all),
+          () => setState(() => _view = _FavoritesView.all),
         ),
         chip(
           'Grid',
           _view == _FavoritesView.grid,
-              () => setState(() => _view = _FavoritesView.grid),
+          () => setState(() => _view = _FavoritesView.grid),
         ),
         chip(
           'List',
           _view == _FavoritesView.list,
-              () => setState(() => _view = _FavoritesView.list),
+          () => setState(() => _view = _FavoritesView.list),
         ),
       ],
     );
@@ -223,12 +222,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   );
 
   Widget _centered(
-      ColorScheme c, {
-        required IconData icon,
-        required String title,
-        String? subtitle,
-        Widget? action,
-      }) => Center(
+    ColorScheme c, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? action,
+  }) => Center(
     child: Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -264,7 +263,7 @@ String _meta(MealModel meal) => [meal.strCategory, meal.strArea]
     .whereType<String>()
     .map((v) => v.trim())
     .where((v) => v.isNotEmpty)
-    .join(' · ');
+    .join(' - ');
 
 void _openDetails(BuildContext context, MealModel meal) {
   Navigator.push(
@@ -322,12 +321,12 @@ class _Thumb extends StatelessWidget {
       child: url.isEmpty
           ? placeholder
           : Image.network(
-        url,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => placeholder,
-      ),
+              url,
+              width: width,
+              height: height,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => placeholder,
+            ),
     );
   }
 }
@@ -454,9 +453,7 @@ class _MealTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _meta(meal),
-                      style: AppTheme.small.copyWith(
-                        color: c.onSurfaceVariant,
-                      ),
+                      style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -492,10 +489,7 @@ class _GridCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _Thumb(
-                    url: meal.strMealThumb,
-                    radius: BorderRadius.zero,
-                  ),
+                  _Thumb(url: meal.strMealThumb, radius: BorderRadius.zero),
                   Positioned(
                     top: 4,
                     right: 4,
