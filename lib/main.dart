@@ -8,6 +8,7 @@ import 'core/app_theme.dart';
 import 'firebase_options.dart';
 import 'presentation/pages/splash_page.dart';
 import 'presentation/cubit/profile_cubit.dart';
+import 'presentation/cubit/planner_cubit.dart';
 import 'core/services/meal_notification_service.dart';
 import 'presentation/cubit/notifications_cubit.dart';
 
@@ -40,6 +41,7 @@ Future<void> main() async {
   final firstLaunchNotAsked = prefs.getBool(firstLaunchKey) == null;
   await MealNotificationService.instance.initialize(
     enabled: prefs.getBool(ProfileCubit.notificationsKey) ?? true,
+    reminderTimes: ProfileCubit.reminderTimesFromPrefs(prefs),
   );
   if (firstLaunchNotAsked) {
     final granted = await MealNotificationService.instance.requestPermission();
@@ -49,7 +51,10 @@ Future<void> main() async {
   final notificationsEnabled =
       prefs.getBool(ProfileCubit.notificationsKey) ?? true;
   final notificationPermissionGranted = await MealNotificationService.instance
-      .initialize(enabled: notificationsEnabled);
+      .initialize(
+        enabled: notificationsEnabled,
+        reminderTimes: ProfileCubit.reminderTimesFromPrefs(prefs),
+      );
   if (notificationsEnabled && !notificationPermissionGranted) {
     await prefs.setBool(ProfileCubit.notificationsKey, false);
   }
@@ -60,6 +65,11 @@ Future<void> main() async {
         BlocProvider(create: (_) => ProfileCubit(prefs)),
         // فوق الـ MaterialApp عشان الهوم والبروفايل وصفحة الـ AI يشوفوه.
         BlocProvider(create: (_) => FavoritesCubit()),
+        BlocProvider(
+          create: (context) =>
+              PlannerCubit(favoritesCubit: context.read<FavoritesCubit>())
+                ..initialize(),
+        ),
         BlocProvider(create: (_) => NotificationsCubit()..load()),
       ],
       child: NutriMateApp(

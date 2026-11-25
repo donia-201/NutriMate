@@ -48,7 +48,7 @@ class _SearchViewState extends State<_SearchView> {
   final _controller = TextEditingController();
   final _searchFocus = FocusNode();
   SearchCubit? _cubit;
-  bool _sortAscending = true;
+  final bool _sortAscending = true;
 
   static const _categories = <List<String>>[
     ['Beef', 'https://www.themealdb.com/images/category/beef.png'],
@@ -61,16 +61,36 @@ class _SearchViewState extends State<_SearchView> {
     ['Side dishes', 'https://www.themealdb.com/images/category/side.png'],
   ];
   static const _countries = [
-    ('Greece', 'GR', 'Greek'),
-    ('Italy', 'IT', 'Italian'),
-    ('Mexico', 'MX', 'Mexican'),
-    ('India', 'IN', 'Indian'),
-    ('Japan', 'JP', 'Japanese'),
-    ('Egypt', 'EG', 'Egyptian'),
-    ('France', 'FR', 'French'),
-    ('Thailand', 'TH', 'Thai'),
-    ('USA', 'US', 'American'),
+    ('Greece', 'Greek'),
+    ('Italy', 'Italian'),
+    ('Mexico', 'Mexican'),
+    ('India', 'Indian'),
+    ('Japan', 'Japanese'),
+    ('Egypt', 'Egyptian'),
+    ('France', 'French'),
+    ('Thailand', 'Thai'),
+    ('USA', 'American'),
+    ('United Kingdom', 'British'),
   ];
+  static const _areaFlags = <String, String>{
+    'greek': '\u{1F1EC}\u{1F1F7}',
+    'italian': '\u{1F1EE}\u{1F1F9}',
+    'mexican': '\u{1F1F2}\u{1F1FD}',
+    'indian': '\u{1F1EE}\u{1F1F3}',
+    'japanese': '\u{1F1EF}\u{1F1F5}',
+    'egyptian': '\u{1F1EA}\u{1F1EC}',
+    'french': '\u{1F1EB}\u{1F1F7}',
+    'thai': '\u{1F1F9}\u{1F1ED}',
+    'american': '\u{1F1FA}\u{1F1F8}',
+    'british': '\u{1F1EC}\u{1F1E7}',
+  };
+
+  static String? _countryFlag(String area) {
+    final normalizedArea = area.trim().toLowerCase();
+    if (normalizedArea.isEmpty || normalizedArea == 'unknown') return null;
+    return _areaFlags[normalizedArea];
+  }
+
   static const _ingredients = <List<String>>[
     ['Avocado', 'avocado'],
     ['Chicken', 'chicken'],
@@ -259,11 +279,6 @@ class _SearchViewState extends State<_SearchView> {
               },
               icon: const Icon(Icons.clear),
             ),
-          IconButton(
-            tooltip: 'Sort results',
-            onPressed: () => setState(() => _sortAscending = !_sortAscending),
-            icon: Icon(_sortAscending ? Icons.sort : Icons.sort_by_alpha),
-          ),
         ],
       ),
     ),
@@ -329,7 +344,7 @@ class _SearchViewState extends State<_SearchView> {
       final filteredCountries = _countries.where((item) {
         return query.isEmpty ||
             item.$1.toLowerCase().contains(query) ||
-            item.$3.toLowerCase().contains(query);
+            item.$2.toLowerCase().contains(query);
       }).toList();
       if (filteredCountries.isEmpty) {
         return const SliverToBoxAdapter(
@@ -435,55 +450,62 @@ class _SearchViewState extends State<_SearchView> {
     );
   }
 
-  Widget _countryCard((String, String, String) item, SearchCubit cubit) =>
-      InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        onTap: () async {
-          await cubit.select(item.$3);
-          if (!mounted) return;
-          await Navigator.push<void>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FilteredMealsPage(cubit: cubit, title: item.$1),
-            ),
-          );
-          if (!mounted) return;
-          cubit.resetDiscovery();
-          _controller.clear();
-          setState(() {});
-        },
-        child: Card(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                child: Text(
-                  item.$2,
-                  style: AppTextStyles.buttonText.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 15,
-                    letterSpacing: 1,
-                  ),
+  Widget _countryCard((String, String) item, SearchCubit cubit) {
+    final flag = _countryFlag(item.$2);
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      onTap: () async {
+        await cubit.select(item.$2);
+        if (!mounted) return;
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FilteredMealsPage(cubit: cubit, title: item.$1),
+          ),
+        );
+        if (!mounted) return;
+        cubit.resetDiscovery();
+        _controller.clear();
+        setState(() {});
+      },
+      child: Card(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: AppTheme.gridUnit),
-              Text(item.$1, style: AppTheme.label),
-            ],
-          ),
+              child: flag == null
+                  ? Icon(
+                      Icons.public,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 30,
+                    )
+                  : Text(
+                      flag,
+                      style: AppTextStyles.buttonText.copyWith(
+                        fontSize: 30,
+                        letterSpacing: 0,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: AppTheme.gridUnit),
+            Text(item.$1, style: AppTheme.label),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   SliverPadding _mealResults(List<MealModel> meals) {
     final sorted = [...meals]

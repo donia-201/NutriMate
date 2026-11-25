@@ -15,6 +15,9 @@ import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import 'search_page.dart';
 import 'meal_details_page.dart';
+import '../widgets/meal_reminder_times_card.dart';
+
+final Set<String> _pendingPlannerRemovals = {};
 
 class PlannerPage extends StatelessWidget {
   final PlannerCubit? cubit;
@@ -77,7 +80,7 @@ class _PlannerView extends StatelessWidget {
     builder: (context, state) {
       final cubit = context.read<PlannerCubit>();
       final content = SafeArea(
-        bottom: false,
+        bottom: !embedded,
         child: CustomScrollView(
           slivers: [
             SliverPadding(
@@ -89,6 +92,10 @@ class _PlannerView extends StatelessWidget {
               sliver: SliverToBoxAdapter(
                 child: _daySelector(context, state, cubit),
               ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+              sliver: SliverToBoxAdapter(child: MealReminderTimesCard()),
             ),
             if (state.isLoading)
               const SliverFillRemaining(
@@ -301,18 +308,7 @@ class _PlannerView extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(meal.slot, style: AppTheme.label.copyWith(fontSize: 18)),
                 const Spacer(),
-                IconButton(
-                  tooltip: isFavorite
-                      ? 'Remove from favorites'
-                      : 'Add to favorites',
-                  onPressed: () => _toggleFavorite(context, meal),
-                  icon: Icon(
-                    isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: isFavorite
-                        ? AppColors.accentHeart
-                        : Theme.of(context).colorScheme.primary,
-                  ),
-                ),
+                _PlannerFavoriteButton(meal: meal, isFavorite: isFavorite),
               ],
             ),
             const SizedBox(height: 12),
@@ -380,12 +376,13 @@ class _PlannerView extends StatelessWidget {
                               return;
                             }
                             if (!context.mounted) return;
-                            showAddToPlannerSheet(
+                            await showAddToPlannerSheet(
                               context,
                               _asMeal(meal),
                               initialDay: meal.day,
                               cubit: cubit,
                             );
+                            if (!context.mounted) return;
                           },
                     child: const Text('Replace'),
                   ),
@@ -473,30 +470,6 @@ class _PlannerView extends StatelessWidget {
         ),
       );
 
-  Future<void> _toggleFavorite(
-    BuildContext context,
-    PlannedMeal plannedMeal,
-  ) async {
-    if (!await requireSignedIn(context, feature: 'Favorites')) return;
-    if (!context.mounted) return;
-
-    final favorites = context.read<FavoritesCubit>();
-    final ok = await favorites.toggle(_asMeal(plannedMeal));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? (favorites.isFavorite(plannedMeal.idMeal)
-                    ? 'Added to your favorites.'
-                    : 'Removed from favorites.')
-              : (favorites.state.errorMessage ??
-                    'Could not update favorites. Please try again.'),
-        ),
-      ),
-    );
-  }
-
   Future<void> _openSearch(BuildContext context) async {
     if (!await requireSignedIn(context, feature: 'Meal planning')) return;
     if (!context.mounted) return;
@@ -540,52 +513,116 @@ class _PlannerView extends StatelessWidget {
       );
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove planned meal?'),
-        content: Text('Remove ${meal.strMeal} from ${meal.slot}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) await cubit.removeMeal(meal);
+    final key = '${meal.day.toIso8601String()}|${meal.slot}';
+    if (!_pendingPlannerRemovals.add(key)) return;
+    try {
+      final confirmed = await showActionConfirmationDialog(
+        context,
+        title: 'Remove planned meal?',
+        message:
+            'Remove ${meal.strMeal} from ${meal.slot} on ${DateFormat('EEE, MMM d').format(meal.day)}?',
+        confirmLabel: 'Remove',
+        icon: Icons.delete_outline,
+        accentColor: Theme.of(context).colorScheme.error,
+      );
+      if (confirmed && context.mounted) await cubit.removeMeal(meal);
+    } finally {
+      _pendingPlannerRemovals.remove(key);
+    }
   }
-
-  MealModel _asMeal(PlannedMeal meal) => MealModel(
-    idMeal: meal.idMeal,
-    strMeal: meal.strMeal,
-    strMealThumb: meal.strMealThumb,
-    strCategory: meal.strCategory,
-    strArea: meal.strArea,
-  );
-
-  IconData _slotIcon(String slot) => switch (slot) {
-    'Breakfast' => Icons.wb_sunny_outlined,
-    'Lunch' => Icons.wb_sunny,
-    'Dinner' => Icons.nightlight_outlined,
-    _ => Icons.restaurant,
-  };
-
-  String _weekday(DateTime day) =>
-      const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
-
-  String _weekLabel(DateTime day) {
-    final monday = day.subtract(Duration(days: day.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    return '${DateFormat('MMMM d').format(monday)}-${DateFormat('d, yyyy').format(sunday)}';
-  }
-
-  bool _sameDay(DateTime first, DateTime second) =>
-      first.year == second.year &&
-      first.month == second.month &&
-      first.day == second.day;
 }
+
+class _PlannerFavoriteButton extends StatefulWidget {
+  final PlannedMeal meal;
+  final bool isFavorite;
+
+  const _PlannerFavoriteButton({required this.meal, required this.isFavorite});
+
+  @override
+  State<_PlannerFavoriteButton> createState() => _PlannerFavoriteButtonState();
+}
+
+class _PlannerFavoriteButtonState extends State<_PlannerFavoriteButton> {
+  bool _isUpdating = false;
+
+  Future<void> _toggleFavorite() async {
+    if (_isUpdating) return;
+    setState(() => _isUpdating = true);
+    try {
+      if (!await requireSignedIn(context, feature: 'Favorites')) return;
+      if (!mounted) return;
+
+      final favorites = context.read<FavoritesCubit>();
+      final isFavorite = favorites.isFavorite(widget.meal.idMeal);
+      if (isFavorite) {
+        final confirmed = await showActionConfirmationDialog(
+          context,
+          title: 'Remove from favorites?',
+          message: 'Remove ${widget.meal.strMeal} from your favorites?',
+          confirmLabel: 'Remove',
+          icon: Icons.favorite_border,
+          accentColor: Theme.of(context).colorScheme.error,
+        );
+        if (!confirmed || !mounted) return;
+      }
+
+      final ok = await favorites.toggle(_asMeal(widget.meal));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? (favorites.isFavorite(widget.meal.idMeal)
+                      ? 'Added to your favorites.'
+                      : 'Removed from favorites.')
+                : (favorites.state.errorMessage ??
+                      'Could not update favorites. Please try again.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: widget.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+    onPressed: _isUpdating ? null : _toggleFavorite,
+    icon: Icon(
+      widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+      color: widget.isFavorite
+          ? AppColors.accentHeart
+          : Theme.of(context).colorScheme.primary,
+    ),
+  );
+}
+
+MealModel _asMeal(PlannedMeal meal) => MealModel(
+  idMeal: meal.idMeal,
+  strMeal: meal.strMeal,
+  strMealThumb: meal.strMealThumb,
+  strCategory: meal.strCategory,
+  strArea: meal.strArea,
+);
+
+IconData _slotIcon(String slot) => switch (slot) {
+  'Breakfast' => Icons.wb_sunny_outlined,
+  'Lunch' => Icons.wb_sunny,
+  'Dinner' => Icons.nightlight_outlined,
+  _ => Icons.restaurant,
+};
+
+String _weekday(DateTime day) =>
+    const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
+
+String _weekLabel(DateTime day) {
+  final monday = day.subtract(Duration(days: day.weekday - 1));
+  final sunday = monday.add(const Duration(days: 6));
+  return '${DateFormat('MMMM d').format(monday)}-${DateFormat('d, yyyy').format(sunday)}';
+}
+
+bool _sameDay(DateTime first, DateTime second) =>
+    first.year == second.year &&
+    first.month == second.month &&
+    first.day == second.day;

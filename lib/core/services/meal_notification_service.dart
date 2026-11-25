@@ -1,14 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/planned_meal.dart';
-import '../../data/models/app_notification.dart';
 import '../../data/dataresource/local_database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -23,21 +24,26 @@ class MealNotificationService with WidgetsBindingObserver {
   bool _initialized = false;
   bool _enabled = true;
   int _syncGeneration = 0;
-  List<PlannedMeal> _latestMeals = const [];
+  Map<String, TimeOfDay> _slotTimes = {...defaultSlotTimes};
 
   static const channelId = 'nutrimate_meal_reminders';
   static const channelName = 'Meal reminders';
-
-  // TODO: Replace these default slot times with user-configurable reminder preferences.
-  static const Map<String, int> slotHours = {
-    'Breakfast': 8,
-    'Lunch': 13,
-    'Dinner': 19,
+  static const _channelDescription = 'Reminders for planned meals';
+  static const defaultSlotTimes = <String, TimeOfDay>{
+    'Breakfast': TimeOfDay(hour: 8, minute: 0),
+    'Lunch': TimeOfDay(hour: 13, minute: 0),
+    'Dinner': TimeOfDay(hour: 19, minute: 0),
   };
 
   bool get isEnabled => _enabled;
 
-  Future<bool> initialize({required bool enabled}) async {
+  Future<bool> initialize({
+    required bool enabled,
+    Map<String, TimeOfDay>? reminderTimes,
+  }) async {
+    if (reminderTimes != null) {
+      _slotTimes = {...defaultSlotTimes, ...reminderTimes};
+    }
     _enabled = enabled;
     if (_initialized) {
       if (!_enabled) return true;
@@ -68,6 +74,20 @@ class MealNotificationService with WidgetsBindingObserver {
         iOS: iosSettings,
       );
       await _notifications.initialize(settings: settings);
+      if (!kIsWeb && Platform.isAndroid) {
+        final android = _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        await android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            channelId,
+            channelName,
+            description: _channelDescription,
+            importance: Importance.high,
+          ),
+        );
+      }
       _initialized = true;
       WidgetsBinding.instance.addObserver(this);
       if (_enabled) {
@@ -98,16 +118,34 @@ class MealNotificationService with WidgetsBindingObserver {
       await cancelAll();
       return false;
     }
-    if (_latestMeals.isNotEmpty) {
-      await syncScheduledMeals(_latestMeals);
+    await syncScheduledMeals();
+    return _enabled;
+  }
+
+  Future<bool> setReminderTime(String slot, TimeOfDay time) async {
+    if (!defaultSlotTimes.containsKey(slot)) {
+      throw ArgumentError.value(slot, 'slot', 'Unknown meal reminder slot');
     }
-    return true;
+    _slotTimes[slot] = time;
+    if (_enabled && _initialized) {
+      await syncScheduledMeals(onlySlot: slot);
+    }
+    return _enabled;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _enabled && _initialized) {
-      syncScheduledMeals(_latestMeals);
+      unawaited(_syncAfterResume());
+    }
+  }
+
+  Future<void> _syncAfterResume() async {
+    try {
+      await syncScheduledMeals();
+    } catch (error, stackTrace) {
+      debugPrint('Could not refresh scheduled meal reminders: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
@@ -173,10 +211,20 @@ class MealNotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> syncScheduledMeals(List<PlannedMeal> meals) async {
-    _latestMeals = List.unmodifiable(meals);
+  Future<void> syncScheduledMeals({String? onlySlot}) async {
+    if (onlySlot != null && !defaultSlotTimes.containsKey(onlySlot)) {
+      throw ArgumentError.value(
+        onlySlot,
+        'onlySlot',
+        'Unknown meal reminder slot',
+      );
+    }
     final generation = ++_syncGeneration;
-    await cancelAll();
+    if (onlySlot == null) {
+      await cancelAll();
+    } else {
+      await _cancelSlotNotifications(onlySlot);
+    }
     if (!_enabled || !_initialized) return;
     bool permitted;
     try {
@@ -191,64 +239,139 @@ class MealNotificationService with WidgetsBindingObserver {
       return;
     }
 
-    final now = DateTime.now();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+    late final List<PlannedMeal> meals;
+    try {
+      meals = await _database.getUpcomingPlannedMeals(uid);
+    } catch (error, stackTrace) {
+      debugPrint('Could not load upcoming meals for reminders: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return;
+    }
+    if (generation != _syncGeneration) return;
+    final scheduleMode = await _androidScheduleMode();
+    if (generation != _syncGeneration) return;
+
+    final now = tz.TZDateTime.now(tz.local);
     final today = DateTime(now.year, now.month, now.day);
     for (final meal in meals) {
       if (generation != _syncGeneration) return;
+      if (onlySlot != null && meal.slot != onlySlot) continue;
       final day = DateTime(meal.day.year, meal.day.month, meal.day.day);
       if (day.isBefore(today)) continue;
-      final hour = slotHours[meal.slot];
-      if (hour == null) continue;
+      final time = _slotTimes[meal.slot];
+      if (time == null) continue;
 
-      var scheduled = DateTime(day.year, day.month, day.day, hour);
+      final scheduled = tz.TZDateTime(
+        tz.local,
+        day.year,
+        day.month,
+        day.day,
+        time.hour,
+        time.minute,
+      );
       if (!scheduled.isAfter(now)) continue;
 
       final id = _notificationId(day, meal.slot);
       try {
-        await _notifications.zonedSchedule(
+        await _scheduleMealReminder(
           id: id,
-          title: '${meal.slot} meal reminder',
-          body: '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
-          scheduledDate: tz.TZDateTime.from(scheduled, tz.local),
-          notificationDetails: const NotificationDetails(
-            android: AndroidNotificationDetails(
-              channelId,
-              channelName,
-              channelDescription: 'Reminders for planned meals',
-              importance: Importance.high,
-              priority: Priority.high,
-            ),
-            iOS: DarwinNotificationDetails(),
-          ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          payload: 'meal:${meal.slot}:${meal.dayKey}',
+          meal: meal,
+          scheduled: scheduled,
+          mode: scheduleMode,
         );
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null && uid.isNotEmpty) {
-          await _database.addAppNotification(
-            AppNotification(
-              uid: uid,
-              title: '${meal.slot} meal reminder',
-              body:
-                  '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
-              triggeredAt: scheduled,
-            ),
-          );
-        }
-      } catch (_) {
-        // Keep planner operations usable if platform notification scheduling fails.
+      } catch (error, stackTrace) {
+        debugPrint('Could not schedule ${meal.slot} reminder: $error');
+        debugPrintStack(stackTrace: stackTrace);
       }
     }
   }
 
+  Future<void> _cancelSlotNotifications(String slot) async {
+    final slotKey = _slotKey(slot);
+    final pending = await _notifications.pendingNotificationRequests();
+    for (final request in pending) {
+      if (request.id % 10 == slotKey) {
+        await _notifications.cancel(id: request.id);
+      }
+    }
+  }
+
+  Future<AndroidScheduleMode> _androidScheduleMode() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+    try {
+      final android = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final canScheduleExact =
+          await android?.canScheduleExactNotifications() ?? false;
+      return canScheduleExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Exact alarm access unavailable; using inexact alarms: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      return AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+  }
+
+  Future<void> _scheduleMealReminder({
+    required int id,
+    required PlannedMeal meal,
+    required tz.TZDateTime scheduled,
+    required AndroidScheduleMode mode,
+  }) async {
+    try {
+      await _notifications.zonedSchedule(
+        id: id,
+        title: '${meal.slot} meal reminder',
+        body: '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
+        scheduledDate: scheduled,
+        notificationDetails: _reminderDetails,
+        androidScheduleMode: mode,
+        payload: 'meal:${meal.slot}:${meal.dayKey}',
+      );
+    } on PlatformException catch (error, stackTrace) {
+      if (mode != AndroidScheduleMode.exactAllowWhileIdle) rethrow;
+      debugPrint('Exact alarm was rejected; retrying inexactly: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      await _notifications.zonedSchedule(
+        id: id,
+        title: '${meal.slot} meal reminder',
+        body: '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
+        scheduledDate: scheduled,
+        notificationDetails: _reminderDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: 'meal:${meal.slot}:${meal.dayKey}',
+      );
+    }
+  }
+
+  static const _reminderDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
+
+  int _slotKey(String slot) => switch (slot) {
+    'Breakfast' => 1,
+    'Lunch' => 2,
+    'Dinner' => 3,
+    _ => 0,
+  };
+
   int _notificationId(DateTime day, String slot) {
     final dateKey = day.year * 10000 + day.month * 100 + day.day;
-    final slotKey = switch (slot) {
-      'Breakfast' => 1,
-      'Lunch' => 2,
-      'Dinner' => 3,
-      _ => 0,
-    };
-    return dateKey * 10 + slotKey;
+    return dateKey * 10 + _slotKey(slot);
   }
 }

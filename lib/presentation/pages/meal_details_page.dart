@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/app_widgets.dart';
 import '../../core/network/ai_api_config.dart';
 import '../../core/network/dio_client.dart';
 import '../../data/dataresource/ai_remote_darasource.dart';
@@ -13,6 +14,7 @@ import '../../data/models/nutrition_model.dart';
 import '../../data/repositories/ai_repository.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import '../cubit/ai_chat_cubit.dart';
+import '../cubit/planner_cubit.dart';
 import 'ai_assistant_page.dart';
 import 'add_to_planner_sheet.dart';
 import 'cooking_details_page.dart';
@@ -103,6 +105,22 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     setState(() => _isSavingFavorite = true);
     try {
       final favorites = context.read<FavoritesCubit>();
+      final isFavorite = favorites.isFavorite(_meal.idMeal);
+      if (isFavorite) {
+        final confirmed = await showActionConfirmationDialog(
+          context,
+          title: 'Remove from favorites?',
+          message: 'Remove ${_meal.strMeal} from your favorites?',
+          confirmLabel: 'Remove',
+          icon: Icons.favorite_border,
+          accentColor: Theme.of(context).colorScheme.error,
+        );
+        if (!confirmed || !mounted) {
+          if (mounted) setState(() => _isSavingFavorite = false);
+          return;
+        }
+      }
+
       final ok = await favorites.toggle(_meal);
       if (!mounted) return;
       if (!ok) {
@@ -204,11 +222,14 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             title: const Text('Recipe'),
           ),
-          body: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? _buildError(colors)
-              : _buildDetails(colors, isFavorite),
+          body: SafeArea(
+            top: false,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? _buildError(colors)
+                : _buildDetails(colors, isFavorite),
+          ),
         );
       },
     );
@@ -324,8 +345,10 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
             await showAddToPlannerSheet(
               context,
               _meal,
+              cubit: context.read<PlannerCubit>(),
               calories: _nutrition?.calories?.round() ?? 0,
             );
+            if (!context.mounted) return;
           },
           child: const Text('Add to Planner'),
         ),

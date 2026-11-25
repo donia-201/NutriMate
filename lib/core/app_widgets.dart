@@ -1,5 +1,75 @@
 import 'package:flutter/material.dart';
+
 import 'app_theme.dart';
+import 'utils/app_colors.dart' as palette;
+import 'utils/app_text_style.dart';
+
+final Set<NavigatorState> _activeConfirmationNavigators = {};
+
+Future<bool> showActionConfirmationDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+  String cancelLabel = 'Cancel',
+  IconData? icon,
+  Color? accentColor,
+}) async {
+  if (!context.mounted) return false;
+
+  final navigator = Navigator.of(context, rootNavigator: true);
+  if (!_activeConfirmationNavigators.add(navigator)) return false;
+
+  try {
+    final colors = Theme.of(context).colorScheme;
+    final accent = accentColor ?? colors.primary;
+    final foreground =
+        accent == colors.error || accent == palette.AppColors.error
+        ? colors.onError
+        : colors.onPrimary;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        icon: icon == null ? null : Icon(icon, color: accent),
+        title: Text(
+          title,
+          style: AppTextStyles.titleBold.copyWith(
+            fontSize: 20,
+            color: colors.onSurface,
+          ),
+        ),
+        content: Text(
+          message,
+          style: AppTheme.body.copyWith(color: colors.onSurfaceVariant),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            style: TextButton.styleFrom(
+              foregroundColor: colors.onSurfaceVariant,
+            ),
+            child: Text(cancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: foreground,
+              textStyle: AppTextStyles.buttonText,
+            ),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed == true;
+  } finally {
+    _activeConfirmationNavigators.remove(navigator);
+  }
+}
 
 class AppCard extends StatelessWidget {
   final Widget child;

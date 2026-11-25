@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
@@ -10,7 +11,7 @@ Future<bool?> showAddToPlannerSheet(
   BuildContext context,
   MealModel meal, {
   DateTime? initialDay,
-  PlannerCubit? cubit,
+  required PlannerCubit cubit,
   int calories = 0,
 }) async {
   final requestedDay = initialDay ?? DateTime.now();
@@ -28,7 +29,6 @@ Future<bool?> showAddToPlannerSheet(
     return false;
   }
   if (!context.mounted) return false;
-  final plannerCubit = cubit ?? PlannerCubit();
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -37,8 +37,7 @@ Future<bool?> showAddToPlannerSheet(
     builder: (_) => _PlannerSheet(
       meal: meal,
       initialDay: initialDay ?? DateTime.now(),
-      cubit: plannerCubit,
-      ownsCubit: cubit == null,
+      cubit: cubit,
       calories: calories,
     ),
   );
@@ -48,14 +47,12 @@ class _PlannerSheet extends StatefulWidget {
   final MealModel meal;
   final DateTime initialDay;
   final PlannerCubit cubit;
-  final bool ownsCubit;
   final int calories;
 
   const _PlannerSheet({
     required this.meal,
     required this.initialDay,
     required this.cubit,
-    required this.ownsCubit,
     required this.calories,
   });
 
@@ -67,6 +64,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
   late DateTime _day;
   String _slot = plannerSlots[1];
   bool _isSaving = false;
+  bool _isConfirming = false;
 
   @override
   void initState() {
@@ -79,12 +77,6 @@ class _PlannerSheetState extends State<_PlannerSheet> {
     _day = PlannerCubit.isPastDay(initialDay)
         ? PlannerCubit.dateOnly(DateTime.now())
         : initialDay;
-  }
-
-  @override
-  void dispose() {
-    if (widget.ownsCubit) widget.cubit.close();
-    super.dispose();
   }
 
   @override
@@ -153,8 +145,14 @@ class _PlannerSheetState extends State<_PlannerSheet> {
                 child: AppButton(
                   label: isPast
                       ? 'Past date - view only'
-                      : (_isSaving ? 'Saving...' : 'Add meal'),
-                  onPressed: (_isSaving || isPast) ? null : _confirm,
+                      : _isSaving
+                      ? 'Saving...'
+                      : _isConfirming
+                      ? 'Confirming...'
+                      : 'Add meal',
+                  onPressed: (_isSaving || _isConfirming || isPast)
+                      ? null
+                      : _confirm,
                   isLoading: _isSaving,
                 ),
               ),
@@ -300,6 +298,7 @@ class _PlannerSheetState extends State<_PlannerSheet> {
   );
 
   Future<void> _confirm() async {
+    if (_isSaving || _isConfirming) return;
     if (PlannerCubit.isPastDay(_day)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -310,46 +309,50 @@ class _PlannerSheetState extends State<_PlannerSheet> {
       );
       return;
     }
-    final existing = await widget.cubit.plannedMeal(_day, _slot);
-    if (!mounted) return;
-    if (existing != null) {
-      final replace = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Replace planned meal?'),
-          content: Text(
-            '$_slot already has ${existing.strMeal}. Replace it with ${widget.meal.strMeal}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Replace'),
-            ),
-          ],
-        ),
+    setState(() => _isConfirming = true);
+    try {
+      final existing = await widget.cubit.plannedMeal(_day, _slot);
+      if (!mounted) return;
+
+      final date = DateFormat('EEE, MMM d').format(_day);
+      final replacing = existing != null;
+      if (replacing) {
+        final confirmed = await showActionConfirmationDialog(
+          context,
+          title: 'Replace planned meal?',
+          message:
+              'Replace ${existing.strMeal} in $_slot on $date with ${widget.meal.strMeal}?',
+          confirmLabel: 'Replace',
+          icon: Icons.swap_horiz,
+          accentColor: Theme.of(context).colorScheme.error,
+        );
+        if (!confirmed || !mounted) return;
+      }
+
+      setState(() {
+        _isConfirming = false;
+        _isSaving = true;
+      });
+      await widget.cubit.saveMeal(
+        meal: widget.meal,
+        day: _day,
+        slot: _slot,
+        calories: widget.calories,
       );
-      if (replace != true || !mounted) return;
+      if (!mounted) return;
+      if (widget.cubit.state.errorMessage != null) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.cubit.state.errorMessage!)),
+        );
+        return;
+      }
+      Navigator.pop(context, true);
+    } finally {
+      if (mounted && _isConfirming) {
+        setState(() => _isConfirming = false);
+      }
     }
-    setState(() => _isSaving = true);
-    await widget.cubit.saveMeal(
-      meal: widget.meal,
-      day: _day,
-      slot: _slot,
-      calories: widget.calories,
-    );
-    if (!mounted) return;
-    if (widget.cubit.state.errorMessage != null) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(widget.cubit.state.errorMessage!)));
-      return;
-    }
-    Navigator.pop(context, true);
   }
 
   String _weekday(DateTime day) =>

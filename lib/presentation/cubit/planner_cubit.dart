@@ -38,6 +38,7 @@ class PlannerCubit extends Cubit<PlannerState> {
   final FavoritesCubit? _favorites;
   StreamSubscription<User?>? _authSub;
   String? _lastUid;
+  int _loadGeneration = 0;
 
   String get _uid => _auth.currentUser?.uid ?? 'guest';
 
@@ -57,6 +58,7 @@ class PlannerCubit extends Cubit<PlannerState> {
 
   Future<void> loadDay(DateTime day) async {
     if (isClosed) return;
+    final generation = ++_loadGeneration;
     final selectedDay = _dateOnly(day);
     emit(
       state.copyWith(
@@ -78,7 +80,7 @@ class PlannerCubit extends Cubit<PlannerState> {
           .where((meal) => _sameDay(meal.day, selectedDay))
           .toList();
       await _ensurePlannedMealsFavorited(weekMeals);
-      if (isClosed) return;
+      if (isClosed || generation != _loadGeneration) return;
       emit(
         state.copyWith(
           meals: meals,
@@ -87,11 +89,11 @@ class PlannerCubit extends Cubit<PlannerState> {
           clearError: true,
         ),
       );
-      if (!isClosed) {
-        await _notifications.syncScheduledMeals(weekMeals);
+      if (!isClosed && generation == _loadGeneration) {
+        await _notifications.syncScheduledMeals();
       }
     } catch (_) {
-      if (isClosed) return;
+      if (isClosed || generation != _loadGeneration) return;
       emit(
         state.copyWith(
           isLoading: false,
@@ -200,6 +202,7 @@ class PlannerCubit extends Cubit<PlannerState> {
     if (user == null || user.isAnonymous) return;
 
     final seen = <String>{};
+    var addedFavorite = false;
     for (final planned in plannedMeals) {
       if (!seen.add(planned.idMeal)) continue;
       final favorite = await _database.isFavorite(_uid, planned.idMeal);
@@ -215,8 +218,9 @@ class PlannerCubit extends Cubit<PlannerState> {
         ),
         true,
       );
+      addedFavorite = true;
     }
-    if (!isClosed) await _favorites?.load();
+    if (addedFavorite && !isClosed) await _favorites?.load();
   }
 
   static DateTime dateOnly(DateTime value) => _dateOnly(value);

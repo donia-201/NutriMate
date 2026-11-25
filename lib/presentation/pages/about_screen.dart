@@ -16,60 +16,63 @@ class AboutScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const SizedBox(height: 12),
-          Center(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: c.surface,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Icon(Icons.eco_outlined, size: 52, color: c.primary),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'NutriMate',
-              style: AppTheme.titleBold.copyWith(
-                fontSize: 30,
-                color: c.onSurface,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Icon(Icons.eco_outlined, size: 52, color: c.primary),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              'Eat smart. Plan better.',
-              style: AppTheme.subTitle.copyWith(color: c.onSurfaceVariant),
-            ),
-          ),
-          const SizedBox(height: 24),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Discover recipes, plan meals and review meal history.',
-                  style: AppTheme.body.copyWith(color: c.onSurface),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'NutriMate',
+                style: AppTheme.titleBold.copyWith(
+                  fontSize: 30,
+                  color: c.onSurface,
                 ),
-                const Divider(height: 28),
-                _InfoRow(Icons.code, 'Developer', ''),
-                const SizedBox(height: 12),
-                _InfoRow(Icons.info_outline, 'Version', '1.0.0'),
-                const SizedBox(height: 16),
-                Text(
-                  '(c) 2026 NutriMate',
-                  style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                'Eat smart. Plan better.',
+                style: AppTheme.subTitle.copyWith(color: c.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 24),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Discover recipes, plan meals and review meal history.',
+                    style: AppTheme.body.copyWith(color: c.onSurface),
+                  ),
+                  const Divider(height: 28),
+                  _InfoRow(Icons.code, 'Developer', ''),
+                  const SizedBox(height: 12),
+                  _InfoRow(Icons.info_outline, 'Version', '1.0.0'),
+                  const SizedBox(height: 16),
+                  Text(
+                    '(c) 2026 NutriMate',
+                    style: AppTheme.small.copyWith(color: c.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

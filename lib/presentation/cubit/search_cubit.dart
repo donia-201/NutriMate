@@ -7,7 +7,7 @@ import '../../data/dataresource/meal_api_services.dart';
 import 'search_state.dart';
 
 class SearchCubit extends Cubit<SearchState> {
-  static const Duration nameSearchDebounce = Duration(milliseconds: 700);
+  static const Duration nameSearchDebounce = Duration(milliseconds: 2000);
 
   SearchCubit({
     MealApiService? apiService,
