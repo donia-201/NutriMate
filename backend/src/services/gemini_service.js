@@ -13,9 +13,9 @@ const DEFAULT_FALLBACK_MODELS = [
 
 // Time limits. The Flutter app waits 45 s and meal analysis makes two
 // Gemini calls, so every call must finish (or fail) well before that.
-const PER_ATTEMPT_TIMEOUT_MS = 9000;
-const TOTAL_BUDGET_MS = 18000;
-const MIN_ATTEMPT_MS = 1500;
+const PER_ATTEMPT_TIMEOUT_MS = 11000;
+const TOTAL_BUDGET_MS = 22000;
+const MIN_ATTEMPT_MS = 10500;
 const MAX_ROUNDS = 2;
 const ROUND_PAUSE_MS = 700;
 
@@ -154,7 +154,7 @@ async function callModel(ai, model, { prompt, responseSchema, temperature }, tim
     return await request(config);
   } catch (error) {
     // Some models reject the thinking setting. Retry once without it.
-    if (getStatus(error) === 400 && config.thinkingConfig) {
+    if (getStatus(error) === 400 && config.thinkingConfig &&  /think/i.test(String(error?.message??''))) {
       console.error(`Gemini (${model}) rejected the thinking setting, retrying without it.`);
       thinkingRejected.add(model);
       delete config.thinkingConfig;
