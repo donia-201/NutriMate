@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/models/meal_model.dart';
+import '../cubit/meal_log_session.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import 'meal_details_page.dart';
@@ -10,11 +12,13 @@ import 'meal_details_page.dart';
 class FilteredMealsPage extends StatefulWidget {
   final SearchCubit cubit;
   final String title;
+  final MealLogSession? logSession;
 
   const FilteredMealsPage({
     super.key,
     required this.cubit,
     required this.title,
+    this.logSession,
   });
 
   @override
@@ -33,9 +37,50 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
     super.dispose();
   }
 
+  MealLogSession? _resolveSession() {
+    if (widget.logSession != null) return widget.logSession;
+    try {
+      return Provider.of<MealLogSession>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _openMealDetails(MealModel meal) async {
+    final session = _resolveSession();
+    final result = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute<Object?>(
+        builder: (_) {
+          final detailsPage = MealDetailsPage(
+            meal: meal,
+            logSession: session,
+          );
+          if (session == null) return detailsPage;
+          return ChangeNotifierProvider<MealLogSession>.value(
+            value: session,
+            child: detailsPage,
+          );
+        },
+      ),
+    );
+    if (!mounted) return;
+    if (result is StagedMealEntry) {
+      session?.stageMeal(
+        result.meal,
+        nutrition: result.nutrition,
+        eatenAt: result.eatenAt,
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(result);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
+    final session = _resolveSession();
+    final body = BlocProvider.value(
       value: widget.cubit,
       child: BlocBuilder<SearchCubit, SearchState>(
         builder: (context, state) {
@@ -113,6 +158,12 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
         },
       ),
     );
+
+    if (session == null) return body;
+    return ChangeNotifierProvider<MealLogSession>.value(
+      value: session,
+      child: body,
+    );
   }
 
   Widget _message(String message, VoidCallback? onRetry) => Center(
@@ -139,12 +190,7 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
 
   Widget _mealTile(BuildContext context, MealModel meal) => InkWell(
     borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(builder: (_) => MealDetailsPage(meal: meal)),
-      );
-    },
+    onTap: () => _openMealDetails(meal),
     child: Card(
       child: Row(
         children: [

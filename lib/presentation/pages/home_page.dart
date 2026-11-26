@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart' hide AppColors;
 import '../../core/app_widgets.dart';
@@ -9,6 +10,7 @@ import '../../core/guest_guard.dart';
 import '../cubit/favorites_cubit.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
+import '../cubit/meal_log_session.dart';
 import '../cubit/planner_cubit.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/search_cubit.dart';
@@ -17,6 +19,7 @@ import '../widgets/bottom_nav.dart';
 import 'insights_page.dart';
 import 'favorites_screen.dart';
 import 'all_popular_recipes_page.dart';
+import 'log_meal_flow_pages.dart';
 import 'planner_page.dart';
 import 'profile_screen.dart';
 import 'notifications_page.dart';
@@ -63,9 +66,16 @@ class _HomeView extends StatefulWidget {
 class _HomeViewState extends State<_HomeView> {
   int _currentBottomNavIndex = 0;
   final Set<String> _pendingFavoriteIds = {};
+  late final MealLogSession _mealLogSession;
 
   final _homeSearchController = TextEditingController();
   final _homeSearchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _mealLogSession = MealLogSession();
+  }
 
   Future<void> _toggleFavorite(MealModel meal) async {
     if (!_pendingFavoriteIds.add(meal.idMeal)) return;
@@ -95,9 +105,48 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   void dispose() {
+    _mealLogSession.dispose();
     _homeSearchController.dispose();
     _homeSearchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _openLogMealPage() {
+    final searchCubit = context.read<SearchCubit>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'LogMealPage'),
+        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
+          value: _mealLogSession,
+          child: BlocProvider.value(
+            value: searchCubit,
+            child: LogMealPage(
+              session: _mealLogSession,
+              onBottomNavTap: (index) {
+                Navigator.of(context).pop();
+                if (mounted) setState(() => _currentBottomNavIndex = index);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMealDetails(MealModel meal, HomeCubit cubit) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
+          value: _mealLogSession,
+          child: MealDetailsPage(
+            meal: meal,
+            logSession: _mealLogSession,
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await cubit.refreshFavorites();
   }
 
   void _openHealthyAlternatives(MealModel meal) {
@@ -182,14 +231,17 @@ class _HomeViewState extends State<_HomeView> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: searchCubit,
-          child: SearchPage(
-            embedded: false,
-            onBottomNavTap: (index) {
-              Navigator.of(context).pop();
-              if (mounted) setState(() => _currentBottomNavIndex = index);
-            },
+        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
+          value: _mealLogSession,
+          child: BlocProvider.value(
+            value: searchCubit,
+            child: SearchPage(
+              embedded: false,
+              onBottomNavTap: (index) {
+                Navigator.of(context).pop();
+                if (mounted) setState(() => _currentBottomNavIndex = index);
+              },
+            ),
           ),
         ),
       ),
@@ -245,7 +297,6 @@ class _HomeViewState extends State<_HomeView> {
       final cubit = context.read<HomeCubit>();
 
       return PopScope(
-        // On any other tab, the system back button returns to Home first.
         canPop: _currentBottomNavIndex == 0,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) setState(() => _currentBottomNavIndex = 0);
@@ -414,13 +465,11 @@ class _HomeViewState extends State<_HomeView> {
 
                       const SizedBox(height: 20),
 
-                      const SizedBox(height: 20),
-
                       Row(
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: _openLogMealPage,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: c.primary,
                                 elevation: 0,
@@ -552,14 +601,7 @@ class _HomeViewState extends State<_HomeView> {
                               meal,
                               state.favoriteIds.contains(meal.idMeal),
                               () => _toggleFavorite(meal),
-                              () => Navigator.of(context)
-                                  .push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          MealDetailsPage(meal: meal),
-                                    ),
-                                  )
-                                  .then((_) => cubit.refreshFavorites()),
+                              () => _openMealDetails(meal, cubit),
                             ),
                           ),
                         ),
@@ -629,7 +671,6 @@ class _HomeViewState extends State<_HomeView> {
               PlannerPage(
                 cubit: context.read<PlannerCubit>(),
                 embedded: true,
-                // The planner is a tab here, so "back" goes to the Home tab.
                 onBack: () => setState(() => _currentBottomNavIndex = 0),
                 onBottomNavTap: (index) {
                   setState(() => _currentBottomNavIndex = index);
@@ -750,9 +791,7 @@ class _HomeViewState extends State<_HomeView> {
     final calories = state.mealNutrition?.calories;
 
     return InkWell(
-      onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => MealDetailsPage(meal: meal)))
-          .then((_) => cubit.refreshFavorites()),
+      onTap: () => _openMealDetails(meal, cubit),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(

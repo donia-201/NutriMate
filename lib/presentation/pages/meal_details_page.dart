@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
@@ -14,6 +15,7 @@ import '../../data/models/nutrition_model.dart';
 import '../../data/repositories/ai_repository.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import '../cubit/ai_chat_cubit.dart';
+import '../cubit/meal_log_session.dart';
 import '../cubit/planner_cubit.dart';
 import 'ai_assistant_page.dart';
 import 'add_to_planner_sheet.dart';
@@ -23,8 +25,9 @@ import '../cubit/favorites_state.dart';
 
 class MealDetailsPage extends StatefulWidget {
   final MealModel meal;
+  final MealLogSession? logSession;
 
-  const MealDetailsPage({super.key, required this.meal});
+  const MealDetailsPage({super.key, required this.meal, this.logSession});
 
   @override
   State<MealDetailsPage> createState() => _MealDetailsPageState();
@@ -146,18 +149,44 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     }
   }
 
+  MealLogSession? _resolveSession() {
+    if (widget.logSession != null) return widget.logSession;
+    try {
+      return Provider.of<MealLogSession>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _logAsEaten() async {
     if (_isLogging) return;
     setState(() => _isLogging = true);
-    try {
-      await _database.logMeal(_uid, _meal, nutrition: _nutrition);
-      if (!mounted) return;
-      setState(() => _isLogging = false);
-      _message('Meal logged as eaten.');
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isLogging = false);
-      _message('Could not log this meal. Please try again.');
+    final tappedAt = DateTime.now();
+
+    final stagedEntry = StagedMealEntry(
+      meal: _meal,
+      nutrition: _nutrition,
+      eatenAt: tappedAt,
+    );
+
+    final session = _resolveSession();
+    session?.stageMeal(_meal, nutrition: _nutrition, eatenAt: tappedAt);
+
+    if (!mounted) return;
+    setState(() => _isLogging = false);
+
+    final navigator = Navigator.of(context);
+    var foundLogMeal = false;
+    navigator.popUntil((route) {
+      if (route.settings.name == 'LogMealPage') {
+        foundLogMeal = true;
+        return true;
+      }
+      return route.isFirst;
+    });
+
+    if (!foundLogMeal && navigator.canPop()) {
+      navigator.pop(stagedEntry);
     }
   }
 
