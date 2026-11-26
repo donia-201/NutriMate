@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart' hide AppColors;
 import '../../core/app_widgets.dart';
@@ -116,17 +115,14 @@ class _HomeViewState extends State<_HomeView> {
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(name: 'LogMealPage'),
-        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
-          value: _mealLogSession,
-          child: BlocProvider.value(
-            value: searchCubit,
-            child: LogMealPage(
-              session: _mealLogSession,
-              onBottomNavTap: (index) {
-                Navigator.of(context).pop();
-                if (mounted) setState(() => _currentBottomNavIndex = index);
-              },
-            ),
+        builder: (_) => BlocProvider.value(
+          value: searchCubit,
+          child: LogMealPage(
+            session: _mealLogSession,
+            onBottomNavTap: (index) {
+              Navigator.of(context).pop();
+              if (mounted) setState(() => _currentBottomNavIndex = index);
+            },
           ),
         ),
       ),
@@ -136,12 +132,9 @@ class _HomeViewState extends State<_HomeView> {
   Future<void> _openMealDetails(MealModel meal, HomeCubit cubit) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
-          value: _mealLogSession,
-          child: MealDetailsPage(
-            meal: meal,
-            logSession: _mealLogSession,
-          ),
+        builder: (_) => MealDetailsPage(
+          meal: meal,
+          logSession: _mealLogSession,
         ),
       ),
     );
@@ -231,17 +224,15 @@ class _HomeViewState extends State<_HomeView> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
-          value: _mealLogSession,
-          child: BlocProvider.value(
-            value: searchCubit,
-            child: SearchPage(
-              embedded: false,
-              onBottomNavTap: (index) {
-                Navigator.of(context).pop();
-                if (mounted) setState(() => _currentBottomNavIndex = index);
-              },
-            ),
+        builder: (_) => BlocProvider.value(
+          value: searchCubit,
+          child: SearchPage(
+            embedded: false,
+            logSession: _mealLogSession,
+            onBottomNavTap: (index) {
+              Navigator.of(context).pop();
+              if (mounted) setState(() => _currentBottomNavIndex = index);
+            },
           ),
         ),
       ),

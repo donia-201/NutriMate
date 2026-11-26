@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/utils/app_text_style.dart';
@@ -17,12 +16,14 @@ class SearchPage extends StatelessWidget {
   final SearchCubit? cubit;
   final bool embedded;
   final ValueChanged<int>? onBottomNavTap;
+  final MealLogSession? logSession;
 
   const SearchPage({
     super.key,
     this.cubit,
     this.embedded = false,
     this.onBottomNavTap,
+    this.logSession,
   });
 
   @override
@@ -30,6 +31,7 @@ class SearchPage extends StatelessWidget {
     final view = _SearchView(
       embedded: embedded,
       onBottomNavTap: onBottomNavTap,
+      logSession: logSession,
     );
     return cubit == null
         ? BlocProvider(create: (_) => SearchCubit(), child: view)
@@ -40,7 +42,13 @@ class SearchPage extends StatelessWidget {
 class _SearchView extends StatefulWidget {
   final bool embedded;
   final ValueChanged<int>? onBottomNavTap;
-  const _SearchView({required this.embedded, this.onBottomNavTap});
+  final MealLogSession? logSession;
+
+  const _SearchView({
+    required this.embedded,
+    this.onBottomNavTap,
+    this.logSession,
+  });
 
   @override
   State<_SearchView> createState() => _SearchViewState();
@@ -119,27 +127,16 @@ class _SearchViewState extends State<_SearchView> {
     super.dispose();
   }
 
-  MealLogSession? _sessionOrNull() {
-    try {
-      return Provider.of<MealLogSession>(context, listen: false);
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<void> _openFilteredMeals(SearchCubit cubit, String title) async {
-    final session = _sessionOrNull();
+    final session = widget.logSession;
     final result = await Navigator.push<Object?>(
       context,
       MaterialPageRoute(
-        builder: (_) {
-          final page = FilteredMealsPage(cubit: cubit, title: title, logSession: session);
-          if (session == null) return page;
-          return ChangeNotifierProvider<MealLogSession>.value(
-            value: session,
-            child: page,
-          );
-        },
+        builder: (_) => FilteredMealsPage(
+          cubit: cubit,
+          title: title,
+          logSession: session,
+        ),
       ),
     );
     if (!mounted) return;
@@ -628,21 +625,14 @@ class _SearchViewState extends State<_SearchView> {
   );
 
   void _openMealDetails(MealModel meal) {
-    final session = _sessionOrNull();
+    final session = widget.logSession;
     Navigator.of(context)
         .push<Object?>(
           PageRouteBuilder<Object?>(
-            pageBuilder: (_, animation, secondaryAnimation) {
-              final detailsPage = MealDetailsPage(
-                meal: meal,
-                logSession: session,
-              );
-              if (session == null) return detailsPage;
-              return ChangeNotifierProvider<MealLogSession>.value(
-                value: session,
-                child: detailsPage,
-              );
-            },
+            pageBuilder: (_, animation, secondaryAnimation) => MealDetailsPage(
+              meal: meal,
+              logSession: session,
+            ),
             transitionsBuilder: (_, animation, secondaryAnimation, child) =>
                 FadeTransition(
                   opacity: CurvedAnimation(

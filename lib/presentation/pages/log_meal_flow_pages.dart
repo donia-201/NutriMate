@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/app_widgets.dart';
 import '../../core/guest_guard.dart';
@@ -91,17 +90,15 @@ class _LogMealPageState extends State<LogMealPage> {
     final searchCubit = context.read<SearchCubit>()..setMode(SearchMode.search);
     final result = await Navigator.of(context).push<Object?>(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
-          value: widget.session,
-          child: BlocProvider.value(
-            value: searchCubit,
-            child: SearchPage(
-              embedded: false,
-              onBottomNavTap: (index) {
-                Navigator.of(context).pop();
-                widget.onBottomNavTap?.call(index);
-              },
-            ),
+        builder: (_) => BlocProvider.value(
+          value: searchCubit,
+          child: SearchPage(
+            embedded: false,
+            logSession: widget.session,
+            onBottomNavTap: (index) {
+              Navigator.of(context).pop();
+              widget.onBottomNavTap?.call(index);
+            },
           ),
         ),
       ),
@@ -120,12 +117,9 @@ class _LogMealPageState extends State<LogMealPage> {
     if (!widget.session.hasEntries) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider<MealLogSession>.value(
-          value: widget.session,
-          child: ConfirmLogMealPage(
-            session: widget.session,
-            onBottomNavTap: widget.onBottomNavTap,
-          ),
+        builder: (_) => ConfirmLogMealPage(
+          session: widget.session,
+          onBottomNavTap: widget.onBottomNavTap,
         ),
       ),
     );

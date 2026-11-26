@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/models/meal_model.dart';
@@ -37,31 +36,17 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
     super.dispose();
   }
 
-  MealLogSession? _resolveSession() {
-    if (widget.logSession != null) return widget.logSession;
-    try {
-      return Provider.of<MealLogSession>(context, listen: false);
-    } catch (_) {
-      return null;
-    }
-  }
+  MealLogSession? _resolveSession() => widget.logSession;
 
   Future<void> _openMealDetails(MealModel meal) async {
     final session = _resolveSession();
     final result = await Navigator.push<Object?>(
       context,
       MaterialPageRoute<Object?>(
-        builder: (_) {
-          final detailsPage = MealDetailsPage(
-            meal: meal,
-            logSession: session,
-          );
-          if (session == null) return detailsPage;
-          return ChangeNotifierProvider<MealLogSession>.value(
-            value: session,
-            child: detailsPage,
-          );
-        },
+        builder: (_) => MealDetailsPage(
+          meal: meal,
+          logSession: session,
+        ),
       ),
     );
     if (!mounted) return;
@@ -79,8 +64,7 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final session = _resolveSession();
-    final body = BlocProvider.value(
+    return BlocProvider.value(
       value: widget.cubit,
       child: BlocBuilder<SearchCubit, SearchState>(
         builder: (context, state) {
@@ -138,7 +122,7 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
                         : filtered.isEmpty
                         ? _message(
                             _filter.trim().isEmpty
-                                ? 'No meals found for ${widget.title}.'
+                                ? 'No meals found for \${widget.title}.'
                                 : 'No meals matched your filter.',
                             null,
                           )
@@ -157,12 +141,6 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
           );
         },
       ),
-    );
-
-    if (session == null) return body;
-    return ChangeNotifierProvider<MealLogSession>.value(
-      value: session,
-      child: body,
     );
   }
 

@@ -1,7 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
@@ -45,8 +43,6 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
   bool _isLogging = false;
   String? _error;
   String? _detailsNotice;
-
-  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? 'guest';
 
   @override
   void initState() {
@@ -113,7 +109,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
         final confirmed = await showActionConfirmationDialog(
           context,
           title: 'Remove from favorites?',
-          message: 'Remove ${_meal.strMeal} from your favorites?',
+          message: 'Remove \${_meal.strMeal} from your favorites?',
           confirmLabel: 'Remove',
           icon: Icons.favorite_border,
           accentColor: Theme.of(context).colorScheme.error,
@@ -149,14 +145,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     }
   }
 
-  MealLogSession? _resolveSession() {
-    if (widget.logSession != null) return widget.logSession;
-    try {
-      return Provider.of<MealLogSession>(context, listen: false);
-    } catch (_) {
-      return null;
-    }
-  }
+  MealLogSession? _resolveSession() => widget.logSession;
 
   Future<void> _logAsEaten() async {
     if (_isLogging) return;
@@ -170,7 +159,11 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
     );
 
     final session = _resolveSession();
-    session?.stageMeal(_meal, nutrition: _nutrition, eatenAt: tappedAt);
+    session?.stageMeal(
+      _meal,
+      nutrition: _nutrition,
+      eatenAt: tappedAt,
+    );
 
     if (!mounted) return;
     setState(() => _isLogging = false);
@@ -198,7 +191,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
 
   String get _aiMealDescription {
     final ingredientText = _meal.ingredients
-        .map((ingredient) => '${ingredient.measure} ${ingredient.name}'.trim())
+        .map((ingredient) => '${ingredient.measure}${ingredient.name}'.trim())
         .join(', ');
     return ingredientText.isEmpty
         ? _meal.strMeal
