@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -22,6 +23,10 @@ class LocalDatabaseService {
   LocalDatabaseService._();
 
   static final LocalDatabaseService instance = LocalDatabaseService._();
+
+  /// Increases every time a meal is logged, so screens that show nutrition
+  /// totals (like Insights) can reload by themselves.
+  final ValueNotifier<int> mealLogsRevision = ValueNotifier<int>(0);
 
   Database? _db;
   Future<Database>? _dbFuture;
@@ -318,6 +323,7 @@ class LocalDatabaseService {
           'isEstimated': nutrition?.isEstimated == true ? 1 : 0,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       });
+      mealLogsRevision.value++;
     } catch (_) {
       throw const LocalDatabaseException(
         type: LocalDatabaseErrorType.write,

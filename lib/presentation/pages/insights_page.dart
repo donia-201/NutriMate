@@ -84,18 +84,25 @@ class InsightsPageState extends State<InsightsPage> {
       setState(() => _uid = user?.uid);
       _loadLogs();
     });
+    _database.mealLogsRevision.addListener(_onMealLogsChanged);
     _loadLogs();
   }
+  // A meal was logged somewhere in the app: reload quietly, no spinner.
+  void _onMealLogsChanged() {
+    if (mounted) _loadLogs(silent: true);
+  }
+
 
   @override
   void dispose() {
+    _database.mealLogsRevision.removeListener(_onMealLogsChanged);
     _authSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> reload() => _loadLogs();
 
-  Future<void> _loadLogs() async {
+  Future<void> _loadLogs({bool silent = false}) async {
     final uid = _uid ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
       if (!mounted) return;
@@ -107,7 +114,7 @@ class InsightsPageState extends State<InsightsPage> {
       return;
     }
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     try {
