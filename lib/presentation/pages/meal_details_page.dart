@@ -109,7 +109,7 @@ class _MealDetailsPageState extends State<MealDetailsPage> {
         final confirmed = await showActionConfirmationDialog(
           context,
           title: 'Remove from favorites?',
-          message: 'Remove \${_meal.strMeal} from your favorites?',
+          message: 'Remove ${_meal.strMeal} from your favorites?',
           confirmLabel: 'Remove',
           icon: Icons.favorite_border,
           accentColor: Theme.of(context).colorScheme.error,

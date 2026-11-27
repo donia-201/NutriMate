@@ -122,7 +122,7 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
                         : filtered.isEmpty
                         ? _message(
                             _filter.trim().isEmpty
-                                ? 'No meals found for \${widget.title}.'
+                                ? 'No meals found for ${widget.title}.'
                                 : 'No meals matched your filter.',
                             null,
                           )

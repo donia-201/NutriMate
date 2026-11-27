@@ -59,56 +59,59 @@ class NotificationsPage extends StatelessWidget {
                 ),
               );
             }
-            return ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: state.notifications.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final notification = state.notifications[index];
-                return AppCard(
-                  padding: EdgeInsets.zero,
-                  child: Material(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-                    child: ListTile(
-                      tileColor: Theme.of(context).colorScheme.surface,
-                      onTap: notification.isRead
-                          ? null
-                          : () => context.read<NotificationsCubit>().markRead(
-                              notification,
-                            ),
-                      leading: CircleAvatar(
-                        backgroundColor: notification.isRead
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest
-                            : Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.18),
-                        child: Icon(
-                          notification.isRead
-                              ? Icons.notifications_none
-                              : Icons.notifications_active,
-                          color: notification.isRead
-                              ? Theme.of(context).colorScheme.onSurfaceVariant
-                              : Theme.of(context).colorScheme.primary,
+            return RefreshIndicator(
+              onRefresh: () => context.read<NotificationsCubit>().load(),
+              child: ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: state.notifications.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final notification = state.notifications[index];
+                  return AppCard(
+                    padding: EdgeInsets.zero,
+                    child: Material(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                      child: ListTile(
+                        tileColor: Theme.of(context).colorScheme.surface,
+                        onTap: notification.isRead
+                            ? null
+                            : () => context.read<NotificationsCubit>().markRead(
+                                notification,
+                              ),
+                        leading: CircleAvatar(
+                          backgroundColor: notification.isRead
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.18),
+                          child: Icon(
+                            notification.isRead
+                                ? Icons.notifications_none
+                                : Icons.notifications_active,
+                            color: notification.isRead
+                                ? Theme.of(context).colorScheme.onSurfaceVariant
+                                : Theme.of(context).colorScheme.primary,
+                          ),
                         ),
+                        title: Text(notification.title),
+                        subtitle: Text(
+                          '${notification.body}\n${DateFormat('EEE, MMM d - hh:mm a').format(notification.triggeredAt)}',
+                        ),
+                        trailing: notification.isRead
+                            ? null
+                            : Icon(
+                                Icons.circle,
+                                size: 10,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                       ),
-                      title: Text(notification.title),
-                      subtitle: Text(
-                        '${notification.body}\n${DateFormat('EEE, MMM d - hh:mm a').format(notification.triggeredAt)}',
-                      ),
-                      trailing: notification.isRead
-                          ? null
-                          : Icon(
-                              Icons.circle,
-                              size: 10,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             );
           },
         ),
