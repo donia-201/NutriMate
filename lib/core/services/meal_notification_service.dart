@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,9 +10,9 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../../data/models/planned_meal.dart';
 import '../../data/dataresource/local_database_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../data/models/app_notification.dart';
+import '../../data/models/planned_meal.dart';
 
 class MealNotificationService with WidgetsBindingObserver {
   MealNotificationService._();
@@ -36,6 +37,8 @@ class MealNotificationService with WidgetsBindingObserver {
   };
 
   bool get isEnabled => _enabled;
+
+  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? 'guest';
 
   Future<bool> initialize({
     required bool enabled,
@@ -73,7 +76,10 @@ class MealNotificationService with WidgetsBindingObserver {
         android: androidSettings,
         iOS: iosSettings,
       );
-      await _notifications.initialize(settings: settings);
+      await _notifications.initialize(
+        settings: settings,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+      );
       if (!kIsWeb && Platform.isAndroid) {
         final android = _notifications
             .resolvePlatformSpecificImplementation<
@@ -90,6 +96,14 @@ class MealNotificationService with WidgetsBindingObserver {
       }
       _initialized = true;
       WidgetsBinding.instance.addObserver(this);
+
+      final launchDetails =
+          await _notifications.getNotificationAppLaunchDetails();
+      if (launchDetails?.didNotificationLaunchApp == true &&
+          launchDetails?.notificationResponse != null) {
+        await _recordResponse(launchDetails!.notificationResponse!);
+      }
+
       if (_enabled) {
         final permitted = await hasPermission();
         if (!permitted) {
@@ -102,6 +116,66 @@ class MealNotificationService with WidgetsBindingObserver {
     } catch (_) {
       _initialized = false;
       return false;
+    }
+  }
+
+  void _handleNotificationResponse(NotificationResponse response) {
+    unawaited(_recordResponse(response));
+  }
+
+  Future<void> _recordResponse(NotificationResponse response) async {
+    final payload = response.payload?.trim() ?? '';
+    String title = 'Meal reminder';
+    String body = 'Time for your scheduled meal';
+    DateTime triggeredAt = DateTime.now();
+
+    final parts = payload.split(':');
+    if (parts.length >= 3 && parts[0] == 'meal') {
+      final slot = parts[1];
+      final dayKey = parts.sublist(2).join(':');
+      title = '$slot meal reminder';
+      body = 'Time for your ${slot.toLowerCase()} reminder';
+
+      try {
+        final parsedDay = DateTime.tryParse(dayKey);
+        if (parsedDay != null) {
+          final slotTime = _slotTimes[slot];
+          if (slotTime != null) {
+            triggeredAt = DateTime(
+              parsedDay.year,
+              parsedDay.month,
+              parsedDay.day,
+              slotTime.hour,
+              slotTime.minute,
+            );
+          }
+          final planned = await _database.getPlannedMeal(
+            _currentUid,
+            parsedDay,
+            slot,
+          );
+          if (planned != null) {
+            body = '${planned.strMeal} is scheduled for ${slot.toLowerCase()}';
+          }
+        }
+      } catch (_) {
+        // Keep fallback values if lookup fails.
+      }
+    }
+
+    try {
+      await _database.addAppNotification(
+        AppNotification(
+          uid: _currentUid,
+          title: title,
+          body: body,
+          triggeredAt: triggeredAt,
+          isRead: false,
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Could not persist received notification: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
@@ -239,7 +313,7 @@ class MealNotificationService with WidgetsBindingObserver {
       return;
     }
 
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'guest';
+    final uid = _currentUid;
     late final List<PlannedMeal> meals;
     try {
       meals = await _database.getUpcomingPlannedMeals(uid);
@@ -270,12 +344,36 @@ class MealNotificationService with WidgetsBindingObserver {
         time.hour,
         time.minute,
       );
-      if (!scheduled.isAfter(now)) continue;
 
+      final title = '${meal.slot} meal reminder';
+      final body = '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}';
+
+      // Only save to the in-app list once the popup time has passed.
+      if (!scheduled.isAfter(now)) {
+        try {
+          await _database.addAppNotification(
+            AppNotification(
+              uid: uid,
+              title: title,
+              body: body,
+              triggeredAt: scheduled.toLocal(),
+              isRead: false,
+            ),
+          );
+        } catch (error, stackTrace) {
+          debugPrint('Could not persist triggered ${meal.slot} reminder: $error');
+          debugPrintStack(stackTrace: stackTrace);
+        }
+        continue;
+      }
+
+      // Future reminder: schedule the OS popup only (do not save to DB yet).
       final id = _notificationId(day, meal.slot);
       try {
         await _scheduleMealReminder(
           id: id,
+          title: title,
+          body: body,
           meal: meal,
           scheduled: scheduled,
           mode: scheduleMode,
@@ -322,6 +420,8 @@ class MealNotificationService with WidgetsBindingObserver {
 
   Future<void> _scheduleMealReminder({
     required int id,
+    required String title,
+    required String body,
     required PlannedMeal meal,
     required tz.TZDateTime scheduled,
     required AndroidScheduleMode mode,
@@ -329,8 +429,8 @@ class MealNotificationService with WidgetsBindingObserver {
     try {
       await _notifications.zonedSchedule(
         id: id,
-        title: '${meal.slot} meal reminder',
-        body: '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
+        title: title,
+        body: body,
         scheduledDate: scheduled,
         notificationDetails: _reminderDetails,
         androidScheduleMode: mode,
@@ -342,8 +442,8 @@ class MealNotificationService with WidgetsBindingObserver {
       debugPrintStack(stackTrace: stackTrace);
       await _notifications.zonedSchedule(
         id: id,
-        title: '${meal.slot} meal reminder',
-        body: '${meal.strMeal} is scheduled for ${meal.slot.toLowerCase()}',
+        title: title,
+        body: body,
         scheduledDate: scheduled,
         notificationDetails: _reminderDetails,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -22,6 +23,13 @@ class LocalDatabaseService {
   LocalDatabaseService._();
 
   static final LocalDatabaseService instance = LocalDatabaseService._();
+
+  /// Increases every time a meal is logged, so screens that show nutrition
+  /// totals (like Insights) can reload by themselves.
+  final ValueNotifier<int> mealLogsRevision = ValueNotifier<int>(0);
+
+  /// Increases every time an in-app notification is added or updated.
+  final ValueNotifier<int> notificationsRevision = ValueNotifier<int>(0);
 
   Database? _db;
   Future<Database>? _dbFuture;
@@ -83,15 +91,12 @@ class LocalDatabaseService {
         }
 
         if (oldVersion < 3) {
-          // الجدول القديم UNIQUE(day, slot) من غير uid،
-          // فلازم نبنيه من جديد.
           await db.execute('DROP TABLE IF EXISTS planned_meals');
 
           await _createPlannedMealsTable(db);
         }
 
         if (oldVersion < 5) {
-          // Favorites are stored per user; the shared meals.isFavorite flag is ignored.
           await _createFavoritesTable(db);
           await _createLoggedMealsTable(db);
           await _createMealLogsTable(db);
@@ -194,13 +199,6 @@ class LocalDatabaseService {
     }
   }
 
-  // ============================================================
-  // FAVORITES (per user)
-  // ============================================================
-
-  /// Adds/removes [meal] from the favorites of [uid] only.
-  /// Meal details live in the shared `meals` cache table; ownership lives
-  /// in the `favorites` table.
   Future<void> setFavorite(String uid, MealModel meal, bool favorite) async {
     try {
       final db = await database;
@@ -248,7 +246,6 @@ class LocalDatabaseService {
     }
   }
 
-  /// Favorites of [uid], newest first.
   Future<List<MealModel>> getFavorites(String uid) async {
     try {
       final rows = await (await database).rawQuery(
@@ -318,6 +315,7 @@ class LocalDatabaseService {
           'isEstimated': nutrition?.isEstimated == true ? 1 : 0,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       });
+      mealLogsRevision.value++;
     } catch (_) {
       throw const LocalDatabaseException(
         type: LocalDatabaseErrorType.write,
@@ -326,7 +324,7 @@ class LocalDatabaseService {
     }
   }
 
-  Future<List<Map<String, Object?>>> getMealLogs(
+  Future<List<Map<String, dynamic>>> getMealLogs(
     String uid, {
     required DateTime start,
     required DateTime end,
@@ -421,10 +419,6 @@ class LocalDatabaseService {
       );
     }
   }
-
-  // ============================================================
-  // PLANNED MEALS
-  // ============================================================
 
   Future<PlannedMeal?> getPlannedMeal(
     String uid,
@@ -584,6 +578,7 @@ class LocalDatabaseService {
     );
     if (existing.isNotEmpty) return;
     await db.insert('app_notifications', notification.toDbMap());
+    notificationsRevision.value++;
   }
 
   Future<List<AppNotification>> getAppNotifications(String uid) async {
@@ -603,6 +598,7 @@ class LocalDatabaseService {
       where: 'uid = ? AND id = ?',
       whereArgs: [uid, id],
     );
+    notificationsRevision.value++;
   }
 
   Future<void> markAllAppNotificationsRead(String uid) async {
@@ -612,6 +608,7 @@ class LocalDatabaseService {
       where: 'uid = ?',
       whereArgs: [uid],
     );
+    notificationsRevision.value++;
   }
 
   Future<void> close() async {

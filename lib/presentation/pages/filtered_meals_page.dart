@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/models/meal_model.dart';
+import '../cubit/meal_log_session.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import 'meal_details_page.dart';
@@ -10,11 +11,13 @@ import 'meal_details_page.dart';
 class FilteredMealsPage extends StatefulWidget {
   final SearchCubit cubit;
   final String title;
+  final MealLogSession? logSession;
 
   const FilteredMealsPage({
     super.key,
     required this.cubit,
     required this.title,
+    this.logSession,
   });
 
   @override
@@ -31,6 +34,32 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  MealLogSession? _resolveSession() => widget.logSession;
+
+  Future<void> _openMealDetails(MealModel meal) async {
+    final session = _resolveSession();
+    final result = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute<Object?>(
+        builder: (_) => MealDetailsPage(
+          meal: meal,
+          logSession: session,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (result is StagedMealEntry) {
+      session?.stageMeal(
+        result.meal,
+        nutrition: result.nutrition,
+        eatenAt: result.eatenAt,
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(result);
+      }
+    }
   }
 
   @override
@@ -139,12 +168,7 @@ class _FilteredMealsPageState extends State<FilteredMealsPage> {
 
   Widget _mealTile(BuildContext context, MealModel meal) => InkWell(
     borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(builder: (_) => MealDetailsPage(meal: meal)),
-      );
-    },
+    onTap: () => _openMealDetails(meal),
     child: Card(
       child: Row(
         children: [

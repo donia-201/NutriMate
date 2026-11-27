@@ -18,11 +18,18 @@ class NotificationsCubit extends Cubit<NotificationsState> {
       if (isClosed) return;
       load();
     });
+    _revisionListener = () {
+      if (isClosed) return;
+      unawaited(load());
+    };
+    _database.notificationsRevision.addListener(_revisionListener);
+    unawaited(load());
   }
 
   final LocalDatabaseService _database;
   final FirebaseAuth _auth;
   StreamSubscription? _authSub;
+  late final void Function() _revisionListener;
 
   String get _uid => _auth.currentUser?.uid ?? 'guest';
 
@@ -77,6 +84,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   @override
   Future<void> close() async {
+    _database.notificationsRevision.removeListener(_revisionListener);
     await _authSub?.cancel();
     return super.close();
   }

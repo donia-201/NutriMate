@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_theme.dart';
 import '../../core/utils/app_text_style.dart';
 import '../../data/models/meal_model.dart';
+import '../cubit/meal_log_session.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/search_state.dart';
@@ -15,12 +16,14 @@ class SearchPage extends StatelessWidget {
   final SearchCubit? cubit;
   final bool embedded;
   final ValueChanged<int>? onBottomNavTap;
+  final MealLogSession? logSession;
 
   const SearchPage({
     super.key,
     this.cubit,
     this.embedded = false,
     this.onBottomNavTap,
+    this.logSession,
   });
 
   @override
@@ -28,6 +31,7 @@ class SearchPage extends StatelessWidget {
     final view = _SearchView(
       embedded: embedded,
       onBottomNavTap: onBottomNavTap,
+      logSession: logSession,
     );
     return cubit == null
         ? BlocProvider(create: (_) => SearchCubit(), child: view)
@@ -38,7 +42,13 @@ class SearchPage extends StatelessWidget {
 class _SearchView extends StatefulWidget {
   final bool embedded;
   final ValueChanged<int>? onBottomNavTap;
-  const _SearchView({required this.embedded, this.onBottomNavTap});
+  final MealLogSession? logSession;
+
+  const _SearchView({
+    required this.embedded,
+    this.onBottomNavTap,
+    this.logSession,
+  });
 
   @override
   State<_SearchView> createState() => _SearchViewState();
@@ -115,6 +125,35 @@ class _SearchViewState extends State<_SearchView> {
     _searchFocus.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _openFilteredMeals(SearchCubit cubit, String title) async {
+    final session = widget.logSession;
+    final result = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FilteredMealsPage(
+          cubit: cubit,
+          title: title,
+          logSession: session,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (result is StagedMealEntry) {
+      session?.stageMeal(
+        result.meal,
+        nutrition: result.nutrition,
+        eatenAt: result.eatenAt,
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(result);
+        return;
+      }
+    }
+    cubit.resetDiscovery();
+    _controller.clear();
+    setState(() {});
   }
 
   @override
@@ -411,16 +450,7 @@ class _SearchViewState extends State<_SearchView> {
         final value = mode == SearchMode.ingredient ? item[1] : name;
         await cubit.select(value);
         if (!mounted) return;
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FilteredMealsPage(cubit: cubit, title: name),
-          ),
-        );
-        if (!mounted) return;
-        cubit.resetDiscovery();
-        _controller.clear();
-        setState(() {});
+        await _openFilteredMeals(cubit, name);
       },
       child: Card(
         clipBehavior: Clip.antiAlias,
@@ -457,16 +487,7 @@ class _SearchViewState extends State<_SearchView> {
       onTap: () async {
         await cubit.select(item.$2);
         if (!mounted) return;
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FilteredMealsPage(cubit: cubit, title: item.$1),
-          ),
-        );
-        if (!mounted) return;
-        cubit.resetDiscovery();
-        _controller.clear();
-        setState(() {});
+        await _openFilteredMeals(cubit, item.$1);
       },
       child: Card(
         child: Column(
@@ -604,11 +625,14 @@ class _SearchViewState extends State<_SearchView> {
   );
 
   void _openMealDetails(MealModel meal) {
+    final session = widget.logSession;
     Navigator.of(context)
-        .push(
-          PageRouteBuilder<void>(
-            pageBuilder: (_, animation, secondaryAnimation) =>
-                MealDetailsPage(meal: meal),
+        .push<Object?>(
+          PageRouteBuilder<Object?>(
+            pageBuilder: (_, animation, secondaryAnimation) => MealDetailsPage(
+              meal: meal,
+              logSession: session,
+            ),
             transitionsBuilder: (_, animation, secondaryAnimation, child) =>
                 FadeTransition(
                   opacity: CurvedAnimation(
@@ -621,8 +645,20 @@ class _SearchViewState extends State<_SearchView> {
             reverseTransitionDuration: const Duration(milliseconds: 220),
           ),
         )
-        .then((_) {
-          if (mounted) context.read<HomeCubit>().refreshFavorites();
+        .then((result) {
+          if (!mounted) return;
+          if (result is StagedMealEntry) {
+            session?.stageMeal(
+              result.meal,
+              nutrition: result.nutrition,
+              eatenAt: result.eatenAt,
+            );
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop(result);
+            }
+            return;
+          }
+          context.read<HomeCubit>().refreshFavorites();
         });
   }
 }
